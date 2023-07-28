@@ -1,5 +1,6 @@
 import { NS } from "@ns";
 import { nodes } from 'global';
+import { idealThreads } from "./helper";
 
 export async function autohack(ns: NS, server: string, portsHint?: number): Promise<number> {
     let retval = 0;
@@ -38,12 +39,31 @@ export async function autohack(ns: NS, server: string, portsHint?: number): Prom
         ns.nuke(server);
         retval = 1;
     }
-    if (!(server === "home")) {
-        ns.scp("startup-hack.js", server, "home");
-    }
-    const nThreads = Math.floor((ns.getServerMaxRam(server) - ns.getServerUsedRam(server)) / ns.getScriptRam("startup-hack.js", "home"));
-    if (nThreads > 0) {
-        ns.exec("startup-hack.js", server, { threads: nThreads });
+    const res = idealThreads(ns, "startup-hack.js", server, ["global.js"]);
+    if (res.canRun) {
+        ns.tprintf("startup-hack.js can run %d threads on %s", res.threads, server);
+        if (res.threads === 0) {
+            if (ns.isRunning("startup-hack.js", server)) {
+                ns.printf("startup-hack.js is already running on %s", server);
+                retval = 1;
+            } else {
+                ns.tprintf("startup-hack.js is not running on %s", server);
+                retval = 0;
+            }
+        } else {
+            const pid = ns.exec("startup-hack.js", server, { threads: res.threads });
+            if (pid === 0) {
+                ns.toast(`Failed to run startup-hack.js on ${server}`, "warning", 1500);
+                ns.tprintf("autohack failed, but you can try to manually run `connect %s` >> `run startup-hack.js -t %d`", server, res);
+                retval = -1;
+            } else {
+                ns.toast(`Running ${res} threads of startup-hack.js on ${server}`, "info", 1500);
+                retval = 1;
+            }
+        }
+    } else {
+        ns.toast(`Unable to run startup-hack.js on ${server}`, "warning", 1500);
+        retval = -1;
     }
     return retval;
 }

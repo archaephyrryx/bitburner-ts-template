@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { idealThreads } from "./helper";
 
 export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
     let mutated = false;
@@ -34,13 +35,6 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
 }
 
 
-export function idealThreads(ns: NS, scriptName: string, servName: string): number {
-    const maxRam = ns.getServerMaxRam(servName);
-    const usedRam = ns.getServerUsedRam(servName);
-    const availRam = maxRam - usedRam;
-    const runCost = ns.getScriptRam(scriptName, "home");
-    return Math.floor(availRam / runCost);
-}
 
 export async function optimizeScripts(ns: NS, force = false) {
     const servers = ns.getPurchasedServers();
