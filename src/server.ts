@@ -19,11 +19,17 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
                 return mutated;
             }
             ns.scp("startup-hack.js", hostname);
-            const nThreads = idealThreads(ns, "startup-hack.js", hostname);
-            if (nThreads > 0) {
-                ns.exec("startup-hack.js", hostname, nThreads);
+            const res = idealThreads(ns, "startup-hack.js", hostname, ["global.js"]);
+            if (res.canRun) {
+                const nThreads = res.threads;
+                if (nThreads > 0) {
+                    ns.exec("startup-hack.js", hostname, nThreads);
+                } else {
+                    ns.toast("Server `" + hostname + "` does not have enough RAM to run hack script", "error");
+                }
             } else {
-                ns.toast("Server `" + hostname + "` does not have enough RAM to run hack script", "error");
+                ns.printf("Unable to run script %s on server %s", "startup-hack.js", hostname);
+                return mutated;
             }
             ++i;
         }
@@ -43,13 +49,16 @@ export async function optimizeScripts(ns: NS, force = false) {
         if (force) {
             ns.scriptKill("startup-hack.js", serv);
         }
-        const nThreads = idealThreads(ns, "startup-hack.js", serv);
-        if (nThreads > 0) {
-            if (ns.scp("startup-hack.js", serv, "home")) {
+        const res = idealThreads(ns, "startup-hack.js", serv);
+        if (res.canRun) {
+            const nThreads = res.threads;
+            if (nThreads > 0) {
                 ns.exec("startup-hack.js", serv, { threads: nThreads });
             } else {
                 ns.toast("Server `" + serv + "` failed to receive hack script from `home`", "error");
             }
+        } else {
+            ns.printf("Unable to run script %s on server %s", "startup-hack.js", serv);
         }
     }
 }
@@ -121,9 +130,15 @@ export async function doubleAllServerRam(ns: NS): Promise<boolean> {
             }
             if (ns.upgradePurchasedServer(serv, targetRam)) {
                 numUpgrades++;
-                const nThreads = idealThreads(ns, "startup-hack.js", serv);
-                if (nThreads > 0) {
-                    ns.exec("startup-hack.js", serv, { threads: nThreads });
+                const res = idealThreads(ns, "startup-hack.js", serv);
+                if (res.canRun) {
+                    const nThreads = res.threads;
+                    if (nThreads > 0) {
+                        ns.exec("startup-hack.js", serv, { threads: nThreads });
+                    }
+                } else {
+                    ns.tprintf("Unable to run script %s on server %s", "startup-hack.js", serv);
+                    break;
                 }
                 i++;
             } else {
