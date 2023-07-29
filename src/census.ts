@@ -1,30 +1,51 @@
 import { NS } from "@ns";
-import { nodes } from "./global";
+import { NodeInfo } from "./global";
+import { explore } from "./graph";
+
+type Graph = { populated: false } | { populated: true, nodes: NodeInfo[] }
+let graph: Graph = { populated: false };
+
+function getGraph(ns: NS): NodeInfo[] {
+    if (!graph.populated) {
+        graph = { populated: true, nodes: explore(ns) };
+    }
+    return graph.nodes;
+}
+
 
 type RamInfo = { home: number, purchased: number, rooted: number };
 
-
 function usedRam(ns: NS): RamInfo {
-    const totalRam = { home: ns.getServerMaxRam("home"), purchased: 0, rooted: 0 };
-    for (const server of ns.getPurchasedServers()) {
-        totalRam.purchased += ns.getServerUsedRam(server);
-    }
-    for (const node of nodes) {
-        if (ns.hasRootAccess(node.name)) {
-            totalRam.rooted += ns.getServerUsedRam(node.name);
+    const totalRam = { home: 0, purchased: 0, rooted: 0 };
+    const servers = getGraph(ns);
+    for (const server of servers) {
+        if (ns.hasRootAccess(server.name)) {
+            const usedRam = ns.getServerUsedRam(server.name);
+            if (server.name === "home") {
+                totalRam.home += usedRam;
+            } else if (server.name.startsWith("pserv")) {
+                totalRam.purchased += usedRam;
+            } else {
+                totalRam.rooted += usedRam;
+            }
         }
     }
     return totalRam;
 }
 
 function controlledRam(ns: NS): RamInfo {
-    const totalRam = { home: ns.getServerMaxRam("home"), purchased: 0, rooted: 0 };
-    for (const server of ns.getPurchasedServers()) {
-        totalRam.purchased += ns.getServerMaxRam(server);
-    }
-    for (const node of nodes) {
-        if (ns.hasRootAccess(node.name)) {
-            totalRam.rooted += ns.getServerMaxRam(node.name);
+    const totalRam = { home: 0, purchased: 0, rooted: 0 };
+    const servers = getGraph(ns);
+    for (const server of servers) {
+        if (ns.hasRootAccess(server.name)) {
+            const maxRam = ns.getServerMaxRam(server.name);
+            if (server.name === "home") {
+                totalRam.home += maxRam;
+            } else if (server.name.startsWith("pserv")) {
+                totalRam.purchased += maxRam;
+            } else {
+                totalRam.rooted += maxRam;
+            }
         }
     }
     return totalRam;
@@ -43,12 +64,17 @@ function formatInfo(ns: NS, info: RamInfo): string {
     return `${ns.formatRam(total)} (${ns.formatRam(info.home)}|${ns.formatRam(info.purchased)}|${ns.formatRam(info.rooted)})`;
 }
 
-
-export async function main(ns: NS): Promise<void> {
+export function displayRam(ns: NS) {
     const avail = controlledRam(ns);
     const used = usedRam(ns);
     const free = diffRam(avail, used);
     ns.tprint(`Controlled RAM: ${formatInfo(ns, avail)}`);
     ns.tprint(`Used RAM: ${formatInfo(ns, used)}`);
     ns.tprint(`Free RAM: ${formatInfo(ns, free)}`);
+}
+
+
+export async function main(ns: NS): Promise<void> {
+    displayRam(ns);
+    return;
 }

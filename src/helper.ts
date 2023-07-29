@@ -22,15 +22,13 @@ export function idealThreads(ns: NS, scriptName: string, servName: string, deps:
         return { scriptName, servName, canRun: false };
     }
     for (const scriptFile of [scriptName, ...deps]) {
-        if (!ns.fileExists(scriptFile, servName)) {
-            if (!ns.fileExists(scriptFile, "home")) {
+        if (!ns.fileExists(scriptFile, "home")) {
+            ns.toast(`Script (or dependency) ${scriptFile} not found on ${servName} or home`, "error", 1500);
+            return { scriptName, servName, canRun: false };
+        } else {
+            if (!ns.scp(scriptFile, servName, "home")) {
                 ns.toast(`Script (or dependency) ${scriptFile} not found on ${servName} or home`, "error", 1500);
-                return { scriptName, servName, canRun: false };
-            } else {
-                if (!ns.scp(scriptFile, servName, "home")) {
-                    ns.toast(`Script (or dependency) ${scriptFile} not found on ${servName} or home`, "error", 1500);
-                    return { scriptName, servName, canRun: false }
-                }
+                return { scriptName, servName, canRun: false }
             }
         }
     }

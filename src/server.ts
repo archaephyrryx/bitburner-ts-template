@@ -40,6 +40,20 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
     return mutated;
 }
 
+function goldfish(ns: NS, serv: string) {
+    const res = idealThreads(ns, "harvest-lwt.js", serv, ["global.js", "helper.js"]);
+    if (res.canRun) {
+        const nThreads = res.threads;
+        if (nThreads > 0) {
+            ns.exec("harvest-lwt.js", serv, { threads: nThreads }, "seasons");
+        } else {
+            ns.toast("Server `" + serv + "` failed to receive hack script from `home`", "error");
+        }
+    } else {
+        ns.printf("Unable to run script %s on server %s", "harvest-lwt.js", serv);
+    }
+}
+
 export async function optimizeScripts(ns: NS, force = false) {
     const servers = ns.getPurchasedServers();
     for (let i = 0; i < servers.length; i++) {
@@ -48,17 +62,7 @@ export async function optimizeScripts(ns: NS, force = false) {
             ns.scriptKill("startup-hack.js", serv);
             ns.scriptKill("harvest-lwt.js", serv);
         }
-        const res = idealThreads(ns, "harvest-lwt.js", serv, ["global.js", "helper.js"]);
-        if (res.canRun) {
-            const nThreads = res.threads;
-            if (nThreads > 0) {
-                ns.exec("harvest-lwt.js", serv, { threads: nThreads }, "seasons");
-            } else {
-                ns.toast("Server `" + serv + "` failed to receive hack script from `home`", "error");
-            }
-        } else {
-            ns.printf("Unable to run script %s on server %s", "harvest-lwt.js", serv);
-        }
+        goldfish(ns, serv);
     }
 }
 
@@ -93,6 +97,7 @@ export async function balanceServerRam(ns: NS): Promise<boolean> {
                     }
                     if (ns.upgradePurchasedServer(server, maxRam)) {
                         ns.tprintf("Upgraded server %s to %dGB", server, maxRam);
+                        goldfish(ns, server);
                         continue;
                     } else {
                         ns.tprintf("script error: unable to purchase %dGB upgrade for server %s", maxRam, server);
@@ -126,6 +131,7 @@ export async function doubleAllServerRam(ns: NS): Promise<boolean> {
         }
         if (ns.upgradePurchasedServer(serv, targetRam)) {
             numUpgrades++;
+            goldfish(ns, serv);
         } else {
             ns.tprintf("script error: unable to purchase %s upgrade for server %s", ns.formatRam(targetRam), serv);
             continue;

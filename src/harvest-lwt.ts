@@ -32,7 +32,7 @@ export async function hackOnce(ns: NS, server: string) {
 async function seasons(ns: NS): Promise<void> {
     async function season(server: string) {
         await hackOnce(ns, server);
-        ns.toast(`Finished season on ${server}`, "success", 5000);
+        ns.print(`=== Finished season on ${server} ===`);
     }
 
     for (; ;) {
