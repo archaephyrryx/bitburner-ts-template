@@ -36,7 +36,7 @@ export function idealThreads(ns: NS, scriptName: string, servName: string, deps:
     }
     const runCost = ns.getScriptRam(scriptName, servName);
     if (runCost === 0) {
-        ns.toast(`Script ${scriptName} not found on ${servName}`, "error", 1500);
+        ns.toast(`Script ${scriptName} may have missing dependencies on server ${servName}`, "error", 1500);
         return { scriptName, servName, canRun: false };
     }
     return {
