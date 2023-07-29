@@ -67,7 +67,7 @@ export const nodes: NodeInfo[] = [
     { name: "clarkinc", skill: 1195, ports: 5 },
     { name: "4sigma", skill: 1235, ports: 5 },
     { name: "kuai-gong", skill: 1262, ports: 5 },
-    { name: "megacorp", skill: 1296, ports: 5 },
+    { name: "megacorp", skill: 1274, ports: 5 },
     { name: "ecorp", skill: 1345, ports: 5 },
     { name: "fulcrumassets", skill: 1433, ports: 5 },
 ];
