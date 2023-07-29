@@ -20,14 +20,14 @@ function printStockInfo(ns: NS, stock: string) {
     const currentTotalCost = currentOwned * currentAveragePrice;
     const currentProfit = currentTotalValue - currentTotalCost;
     const currentForecast = ns.stock.getForecast(stock);
-    const currentProfitPercentage = currentProfit / currentTotalCost * 100;
+    const currentProfitPercentage = currentProfit / currentTotalCost;
     ns.printf(">%s", stock);
-    ns.printf("  Owned: %d", currentOwned);
-    ns.printf("  Average Price: %d", currentAveragePrice);
+    ns.print("  Owned: " + ns.formatNumber(currentOwned, 3, 1000, true));
+    ns.print("  Average Price: $" + ns.formatNumber(currentAveragePrice, 3, 1000, false));
     ns.printf("  Forecast: %0.02f", currentForecast);
-    ns.printf("  Total Value: %d", currentTotalValue);
-    ns.printf("  Profit: %d", currentProfit);
-    ns.printf("  Profit Percentage: %0.02f%%", currentProfitPercentage);
+    ns.print("  Total Value: " + ns.formatNumber(currentTotalValue, 3, 1000, true));
+    ns.print("  Profit: " + ns.formatNumber(currentProfit));
+    ns.print("  Profit Percentage: " + ns.formatPercent(currentProfitPercentage, 2));
 }
 
 export function increaseBudget(ns: NS, fraction: string | number | boolean): boolean {
@@ -246,7 +246,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                 if (amountToBuy > 0) {
                     const buyPrice = ns.stock.buyStock(stock, amountToBuy);
                     if (buyPrice > 0) {
-                        ns.printf("Bought %d of %s at %d", amountToBuy, stock, buyPrice);
+                        ns.printf("Bought %s of %s at $%s", ns.formatNumber(amountToBuy, 3, 1000, true), stock, ns.formatNumber(buyPrice, 4, 1000, false));
                         remainingSymbolPurchases -= effectiveSymbols;
                         cycleStats.purchased.push(stock);
                     }
@@ -263,7 +263,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                 if (currentOwned > 0) {
                     if (netProfitPercentage >= 0) {
                         const sellPrice = ns.stock.sellStock(stock, currentOwned);
-                        ns.printf("Sold %d of %s at %d", currentOwned, stock, sellPrice);
+                        ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
                         totalBudget += sellPrice * currentOwned;
                         cycleStats.sold.push(stock);
                     } else {
@@ -271,6 +271,8 @@ export async function autoTrader(ns: NS, canBuy = true) {
                         cycleStats.maintained.push(stock);
                         continue inner;
                     }
+                } else {
+                    cycleStats.ignored.push(stock);
                 }
             } else {
                 ns.printf("INFO: Stock %s is forecast to remain stable (%0.02f), so no action will be taken.", stock, currentForecast);

@@ -257,7 +257,8 @@ export const nodes: NodeInfo[] = [
 ];
 
 export const enum ServicePort {
-    ControlSignal = 1,
+    TargetCensusInquiry = 0,
+    TargetCensusResponse = 1,
     DiagnosticInfo = 2,
     MarketAction = 3,
     HackTargetServer = 4,
