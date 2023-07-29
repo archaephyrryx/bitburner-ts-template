@@ -255,3 +255,10 @@ export const nodes: NodeInfo[] = [
         ports: 5,
     },
 ];
+
+export const enum ServicePort {
+    ControlSignal = 1,
+    DiagnosticInfo = 2,
+    MarketAction = 3,
+    HackTargetServer = 4,
+}

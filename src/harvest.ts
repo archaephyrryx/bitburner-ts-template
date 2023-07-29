@@ -7,6 +7,7 @@ export async function seasons(ns: NS): Promise<void> {
     for (const node of nodes) {
         if (canHack(ns, node.name)) {
             await hackOnce(ns, node.name);
+            ns.toast(`Finished season on ${node.name}`, "success", 5000);
         }
     }
 }
