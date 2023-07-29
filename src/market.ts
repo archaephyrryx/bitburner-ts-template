@@ -259,20 +259,16 @@ export async function autoTrader(ns: NS, canBuy = true) {
                     ns.printf("INFO: Stock %s is forecast to increase in value (%0.02f), but autotrader does not have enough budget to purchase stocks.", stock, currentForecast);
                     continue inner;
                 }
-            } else if (currentForecast <= 0.5) {
-                if (currentOwned > 0) {
-                    if (netProfitPercentage >= 0) {
-                        const sellPrice = ns.stock.sellStock(stock, currentOwned);
-                        ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
-                        totalBudget += sellPrice * currentOwned;
-                        cycleStats.sold.push(stock);
-                    } else {
-                        ns.printf("INFO: Stock %s is forecast to decline in value (%0.02f), but autotrader will not sell it unless it is profitable to do so.", stock, currentForecast);
-                        cycleStats.maintained.push(stock);
-                        continue inner;
-                    }
+            } else if (currentForecast <= 0.5 && currentOwned > 0) {
+                if (netProfitPercentage >= 0) {
+                    const sellPrice = ns.stock.sellStock(stock, currentOwned);
+                    ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
+                    totalBudget += sellPrice * currentOwned;
+                    cycleStats.sold.push(stock);
                 } else {
-                    cycleStats.ignored.push(stock);
+                    ns.printf("INFO: Stock %s is forecast to decline in value (%0.02f), but autotrader will not sell it unless it is profitable to do so.", stock, currentForecast);
+                    cycleStats.maintained.push(stock);
+                    continue inner;
                 }
             } else {
                 ns.printf("INFO: Stock %s is forecast to remain stable (%0.02f), so no action will be taken.", stock, currentForecast);
