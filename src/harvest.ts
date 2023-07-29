@@ -6,7 +6,7 @@ import { hackOnce } from "./rip";
 export async function seasons(ns: NS): Promise<void> {
     for (const node of nodes) {
         if (canHack(ns, node.name)) {
-            hackOnce(ns, node.name);
+            await hackOnce(ns, node.name);
         }
     }
 }
