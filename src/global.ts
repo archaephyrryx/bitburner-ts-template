@@ -64,11 +64,11 @@ export const nodes: NodeInfo[] = [
     { name: "nwo", skill: 1078, ports: 5 },
     { name: "omnitek", skill: 1094, ports: 5 },
     { name: "blade", skill: 1103, ports: 5 },
+    { name: "ecorp", skill: 1144, ports: 5 },
     { name: "clarkinc", skill: 1195, ports: 5 },
     { name: "4sigma", skill: 1235, ports: 5 },
     { name: "kuai-gong", skill: 1262, ports: 5 },
     { name: "megacorp", skill: 1274, ports: 5 },
-    { name: "ecorp", skill: 1345, ports: 5 },
     { name: "fulcrumassets", skill: 1433, ports: 5 },
 ];
 
