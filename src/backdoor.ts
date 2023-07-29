@@ -1,12 +1,15 @@
 import { NS } from "@ns";
 
-const serverOrder = ["CSEC", "avmnite-02h", "I.I.I.I"] as const;
+const serverOrder = ["CSEC", "avmnite-02h", "I.I.I.I", "run4theh111z"] as const;
 
 export const backdoors: { [key: string]: number } = {
     "CSEC": 1,
     "avmnite-02h": 2,
     "I.I.I.I": 3,
+    "run4theh111z": 4,
 };
+
+// ["home","harakiri-sushi","CSEC","phantasy","crush-fitness","catalyst","alpha-ent","galactic-cyber","omnia","solaris","taiyang-digital","run4theh111z"]
 
 async function acquirePorts(ns: NS, serv: string, ports: number): Promise<void> {
     if (ports == 5) {

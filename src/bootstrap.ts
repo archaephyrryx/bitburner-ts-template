@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { nodes } from 'global';
 import { idealThreads } from "./helper";
 
-export async function autohack(ns: NS, server: string, portsHint?: number): Promise<number> {
+export async function autohack(ns: NS, server: string, portsHint?: number, renew = false): Promise<number> {
     let retval = 0;
     if (!(server === "home" || ns.hasRootAccess(server))) {
         const portsNeeded = portsHint ?? ns.getServerNumPortsRequired(server);
@@ -39,15 +39,18 @@ export async function autohack(ns: NS, server: string, portsHint?: number): Prom
         ns.nuke(server);
         retval = 1;
     }
+    if (renew) {
+        ns.scriptKill("startup-hack.js", server);
+    }
     const res = idealThreads(ns, "startup-hack.js", server, ["global.js"]);
     if (res.canRun) {
-        ns.tprintf("startup-hack.js can run %d threads on %s", res.threads, server);
+        ns.printf("startup-hack.js can run %d threads on %s", res.threads, server);
         if (res.threads === 0) {
             if (ns.isRunning("startup-hack.js", server)) {
                 ns.printf("startup-hack.js is already running on %s", server);
                 retval = 1;
             } else {
-                ns.tprintf("startup-hack.js is not running on %s", server);
+                ns.printf("startup-hack.js is not running on %s", server);
                 retval = 0;
             }
         } else {
@@ -57,7 +60,7 @@ export async function autohack(ns: NS, server: string, portsHint?: number): Prom
                 ns.tprintf("autohack failed, but you can try to manually run `connect %s` >> `run startup-hack.js -t %d`", server, res);
                 retval = -1;
             } else {
-                ns.toast(`Running ${res} threads of startup-hack.js on ${server}`, "info", 1500);
+                ns.toast(`Running ${res.threads} threads of startup-hack.js on ${server}`, "info", 1500);
                 retval = 1;
             }
         }
@@ -74,15 +77,26 @@ export async function main(ns: NS): Promise<void> {
     // run the scripts.
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
+    const renew = (ns.args[0] === "renew");
 
     for (const servInfo of nodes) {
         const serv = servInfo.name;
-        while (ns.getHackingLevel() < servInfo.skill) {
-            ns.printf("Current hacking skill %d insufficient (<%d) to hack %s...", ns.getHackingLevel(), servInfo.skill, servInfo.name);
-            await ns.sleep(30000);
+        const actualSkill = ns.getServerRequiredHackingLevel(serv);
+        if (actualSkill !== servInfo.skill) {
+            ns.tprintf("INFO: Global server table reports %s requires %d hacking skill, but actual skill requirement is %d", serv, servInfo.skill, actualSkill);
+            ns.tprintf(`HINT: { name: "${servInfo.name}", skill: ${actualSkill}, ports: ${servInfo.ports} }`, serv, servInfo.skill, actualSkill);
+        }
+        let lastHackingLevel = ns.getHackingLevel();
+        while (lastHackingLevel < actualSkill) {
+            const currentHackingLevel = ns.getHackingLevel();
+            if (currentHackingLevel > lastHackingLevel) {
+                ns.printf("Current hacking skill %d insufficient (<%d) to hack %s...", currentHackingLevel, actualSkill, servInfo.name);
+                lastHackingLevel = currentHackingLevel;
+            }
+            await ns.sleep(1000);
         }
         ns.tprintf("running autohack on server %s", serv);
-        const res = await autohack(ns, serv, servInfo.ports);
+        const res = await autohack(ns, serv, servInfo.ports, renew);
         switch (res) {
             case -1:
                 ns.toast("Failed to run autohack on " + serv, "warning", 1500);

@@ -177,9 +177,17 @@ export async function main(ns: NS): Promise<void> {
         case "reboot":
             await optimizeScripts(ns, true);
             break;
-        case "forever":
-            for (; ;) {
-                await once();
+        case "loop":
+            if (Number.isSafeInteger(ns.args[1])) {
+                const nTimes = Number(ns.args[1]);
+                for (let i = 0; i < nTimes; i++) {
+                    await once();
+                }
+                return;
+            } else {
+                for (; ;) {
+                    await once();
+                }
             }
         default:
             await init();

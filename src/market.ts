@@ -7,6 +7,29 @@ const expectedCommission = 100000;
 type CycleStats = { purchased: string[], sold: string[], ignored: string[], maintained: string[] };
 const emptyCycleStats: () => CycleStats = () => { return { purchased: [], sold: [], ignored: [], maintained: [] } };
 
+function printStockInfo(ns: NS, stock: string) {
+    const currentBidPrice = ns.stock.getBidPrice(stock);
+    const currentPosition = ns.stock.getPosition(stock);
+    const currentOwned = currentPosition[0];
+    if (currentOwned < 1) {
+        return;
+    }
+    ns.printf("Stock Information for %s", stock);
+    const currentAveragePrice = currentPosition[1];
+    const currentTotalValue = currentOwned * currentBidPrice;
+    const currentTotalCost = currentOwned * currentAveragePrice;
+    const currentProfit = currentTotalValue - currentTotalCost;
+    const currentForecast = ns.stock.getForecast(stock);
+    const currentProfitPercentage = currentProfit / currentTotalCost * 100;
+    ns.printf(">%s", stock);
+    ns.printf("  Owned: %d", currentOwned);
+    ns.printf("  Average Price: %d", currentAveragePrice);
+    ns.printf("  Forecast: %0.02f", currentForecast);
+    ns.printf("  Total Value: %d", currentTotalValue);
+    ns.printf("  Profit: %d", currentProfit);
+    ns.printf("  Profit Percentage: %0.02f%%", currentProfitPercentage);
+}
+
 export function increaseBudget(ns: NS, fraction: string | number | boolean): boolean {
     if (Number.isNaN(fraction)) {
         ns.tprint("ERROR: increaseBudget requires a fraction argument!");
@@ -218,7 +241,8 @@ export async function autoTrader(ns: NS, canBuy = true) {
                 const effectiveSymbols = Math.min(remainingSymbolPurchases, (currentForecast >= 0.8) ? 3 : (currentForecast >= 0.7) ? 2 : 1);
                 const idealValue = budgetPerStock * effectiveSymbols;
                 const realValue = Math.min(idealValue, moneyAvailable);
-                const amountToBuy = Math.floor(realValue / currentAskPrice);
+                const maxBuy = ns.stock.getMaxShares(stock) - currentOwned;
+                const amountToBuy = Math.min(Math.floor(realValue / currentAskPrice), maxBuy);
                 if (amountToBuy > 0) {
                     const buyPrice = ns.stock.buyStock(stock, amountToBuy);
                     if (buyPrice > 0) {
@@ -244,6 +268,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                         cycleStats.sold.push(stock);
                     } else {
                         ns.printf("INFO: Stock %s is forecast to decline in value (%0.02f), but autotrader will not sell it unless it is profitable to do so.", stock, currentForecast);
+                        cycleStats.maintained.push(stock);
                         continue inner;
                     }
                 }
@@ -260,6 +285,17 @@ export async function autoTrader(ns: NS, canBuy = true) {
         ns.printf("====== AutoTrader cycle %d stats ======", cycle);
         ns.printf("Purchased: %s", cycleStats.purchased.join(", "));
         ns.printf("Sold: %s", cycleStats.sold.join(", "));
+        ns.printf("Maintained: %s", cycleStats.maintained.join(", "));
+
+        cycleStats.purchased.sort();
+        for (const symbol of cycleStats.purchased) {
+            printStockInfo(ns, symbol);
+        }
+        cycleStats.maintained.sort();
+        for (const symbol of cycleStats.maintained) {
+            printStockInfo(ns, symbol);
+        }
+
         ns.printf("====== AutoTrader cycle %d complete ======", cycle);
         portfolioSize = cycleStats.purchased.length + cycleStats.maintained.length;
         await ns.sleep(8000);
