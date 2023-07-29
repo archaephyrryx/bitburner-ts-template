@@ -40,25 +40,24 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
     return mutated;
 }
 
-
-
 export async function optimizeScripts(ns: NS, force = false) {
     const servers = ns.getPurchasedServers();
     for (let i = 0; i < servers.length; i++) {
         const serv = servers[i];
         if (force) {
             ns.scriptKill("startup-hack.js", serv);
+            ns.scriptKill("harvest-lwt.js", serv);
         }
-        const res = idealThreads(ns, "startup-hack.js", serv);
+        const res = idealThreads(ns, "harvest-lwt.js", serv, ["global.js", "helper.js"]);
         if (res.canRun) {
             const nThreads = res.threads;
             if (nThreads > 0) {
-                ns.exec("startup-hack.js", serv, { threads: nThreads });
+                ns.exec("harvest-lwt.js", serv, { threads: nThreads }, "seasons");
             } else {
                 ns.toast("Server `" + serv + "` failed to receive hack script from `home`", "error");
             }
         } else {
-            ns.printf("Unable to run script %s on server %s", "startup-hack.js", serv);
+            ns.printf("Unable to run script %s on server %s", "harvest-lwt.js", serv);
         }
     }
 }
@@ -111,42 +110,24 @@ export async function balanceServerRam(ns: NS): Promise<boolean> {
 export async function doubleAllServerRam(ns: NS): Promise<boolean> {
     const servers = ns.getPurchasedServers();
     const ramLimit = ns.getPurchasedServerMaxRam();
-    let i = 0;
     let numUpgrades = 0;
-    while (i < servers.length) {
-        const serv = servers[i];
-        if (ns.serverExists(serv)) {
-            let upgradeCost = 0;
-            let targetRam = 8;
-            for (; targetRam <= ramLimit; targetRam *= 2) {
-                upgradeCost = ns.getPurchasedServerUpgradeCost(serv, targetRam);
-                if (upgradeCost > 0) {
-                    ns.tprintf("Target RAM for server %s: %dGB", serv, targetRam);
-                    break;
-                }
-            }
-            while (ns.getServerMoneyAvailable("home") < upgradeCost) {
-                await ns.sleep(1000);
-            }
-            if (ns.upgradePurchasedServer(serv, targetRam)) {
-                numUpgrades++;
-                const res = idealThreads(ns, "startup-hack.js", serv);
-                if (res.canRun) {
-                    const nThreads = res.threads;
-                    if (nThreads > 0) {
-                        ns.exec("startup-hack.js", serv, { threads: nThreads });
-                    }
-                } else {
-                    ns.tprintf("Unable to run script %s on server %s", "startup-hack.js", serv);
-                    break;
-                }
-                i++;
-            } else {
-                ns.tprintf("script error: unable to purchase %dGB upgrade for server %s", targetRam, serv);
+    for (const serv of servers) {
+        let upgradeCost = 0;
+        let targetRam = 8;
+        for (; targetRam <= ramLimit; targetRam *= 2) {
+            upgradeCost = ns.getPurchasedServerUpgradeCost(serv, targetRam);
+            if (upgradeCost > 0) {
+                ns.tprintf("Target RAM for server %s: %dGB", serv, targetRam);
                 break;
             }
+        }
+        while (ns.getServerMoneyAvailable("home") < upgradeCost) {
+            await ns.sleep(1000);
+        }
+        if (ns.upgradePurchasedServer(serv, targetRam)) {
+            numUpgrades++;
         } else {
-            ns.tprintf("script error: expected server %s does not exist", serv);
+            ns.tprintf("script error: unable to purchase %s upgrade for server %s", ns.formatRam(targetRam), serv);
             continue;
         }
     }
