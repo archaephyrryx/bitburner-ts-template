@@ -83,6 +83,9 @@ export function autoHack(ns: NS, server: string): boolean {
  * @returns true if server can be hacked, false otherwise
  */
 export function canHack(ns: NS, server: string): boolean {
+    if (server === "home" || server.startsWith("pserv")) {
+        return false;
+    }
     const requiredSkill = ns.getServerRequiredHackingLevel(server);
     const level = ns.getHackingLevel();
     const threshold = (level <= 1 ? 1 : level / 2);

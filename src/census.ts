@@ -2,10 +2,10 @@ import { NS } from "@ns";
 import { NodeInfo } from "./global";
 import { explore } from "./graph";
 
-type Graph = { populated: false } | { populated: true, nodes: NodeInfo[] }
-let graph: Graph = { populated: false };
+export type Graph = { populated: false } | { populated: true, nodes: NodeInfo[] }
+export let graph: Graph = { populated: false };
 
-function getGraph(ns: NS): NodeInfo[] {
+export function getGraph(ns: NS): NodeInfo[] {
     if (!graph.populated) {
         graph = { populated: true, nodes: explore(ns) };
     }

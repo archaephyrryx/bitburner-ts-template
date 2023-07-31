@@ -63,6 +63,7 @@ export async function optimizeScripts(ns: NS, force = false) {
             ns.scriptKill("harvest-lwt.js", serv);
         }
         goldfish(ns, serv);
+        await ns.sleep(200);
     }
 }
 
