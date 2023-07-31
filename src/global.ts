@@ -8,7 +8,7 @@ export const nodes: NodeInfo[] = [
     { name: "hong-fang-tea", skill: 30, ports: 0 },
     { name: "harakiri-sushi", skill: 40, ports: 0 },
     { name: "neo-net", skill: 50, ports: 1 },
-    { name: "CSEC", skill: 51, ports: 1 },
+    { name: "CSEC", skill: 54, ports: 1 },
     { name: "zer0", skill: 75, ports: 1 },
     { name: "max-hardware", skill: 80, ports: 1 },
     { name: "iron-gym", skill: 100, ports: 1 },

@@ -26,6 +26,7 @@ export async function hackOnce(ns: NS, server: string) {
             await ns.hack(server);
             hasHacked = true;
         }
+        await ns.sleep(100);
     }
 }
 
@@ -39,6 +40,8 @@ async function seasons(ns: NS): Promise<void> {
         for (const node of nodes) {
             if (canHack(ns, node.name)) {
                 await season(node.name);
+            } else {
+                await ns.sleep(100);
             }
         }
     }

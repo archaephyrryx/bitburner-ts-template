@@ -84,7 +84,8 @@ export function autoHack(ns: NS, server: string): boolean {
  */
 export function canHack(ns: NS, server: string): boolean {
     const requiredSkill = ns.getServerRequiredHackingLevel(server);
-    const threshold = ns.getHackingLevel() / 2;
+    const level = ns.getHackingLevel();
+    const threshold = (level <= 1 ? 1 : level / 2);
     if (requiredSkill > threshold) {
         return false;
     }

@@ -110,6 +110,5 @@ export async function main(ns: NS): Promise<void> {
                 throw new Error("unreachable!");
         }
     }
-    await autohack(ns, "home", 0);
     return;
 }
