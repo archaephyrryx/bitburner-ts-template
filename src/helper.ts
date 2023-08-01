@@ -63,9 +63,6 @@ export function autoHack(ns: NS, server: string): boolean {
     if (ns.hasRootAccess(server)) {
         return true;
     }
-    if (!canHack(ns, server)) {
-        return false;
-    }
 
     if (ns.fileExists("SQLInject.exe", "home")) ns.sqlinject(server);
     if (ns.fileExists("HTTPWorm.exe", "home")) ns.httpworm(server);
@@ -80,15 +77,51 @@ export function autoHack(ns: NS, server: string): boolean {
  * Checks if a server can be hacked by the player at the moment.
  * @param ns NetScript instance to use
  * @param server server to check for hackability
+ * @param handicap multiplier for effective hacking level, default 0.5
  * @returns true if server can be hacked, false otherwise
  */
-export function canHack(ns: NS, server: string): boolean {
+export function canCrack(ns: NS, server: string): boolean {
+    if (server === "home" || server.startsWith("pserv")) {
+        return true;
+    }
+    const requiredSkill = ns.getServerRequiredHackingLevel(server);
+    const level = ns.getHackingLevel();
+    if (requiredSkill > level) {
+        return false;
+    }
+    const portsNeeded = ns.getServerNumPortsRequired(server);
+    if (portsNeeded >= 5 && !ns.fileExists("SQLInject.exe", "home")) {
+        return false;
+    }
+    if (portsNeeded >= 4 && !ns.fileExists("HTTPWorm.exe", "home")) {
+        return false;
+    }
+    if (portsNeeded >= 3 && !ns.fileExists("relaySMTP.exe", "home")) {
+        return false;
+    }
+    if (portsNeeded >= 2 && !ns.fileExists("FTPCrack.exe", "home")) {
+        return false;
+    }
+    if (portsNeeded >= 1 && !ns.fileExists("BruteSSH.exe", "home")) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Checks if a server can be hacked by the player at the moment.
+ * @param ns NetScript instance to use
+ * @param server server to check for hackability
+ * @param handicap multiplier for effective hacking level, default 0.5
+ * @returns true if server can be hacked, false otherwise
+ */
+export function canHack(ns: NS, server: string, handicap = 0.5): boolean {
     if (server === "home" || server.startsWith("pserv")) {
         return false;
     }
     const requiredSkill = ns.getServerRequiredHackingLevel(server);
     const level = ns.getHackingLevel();
-    const threshold = (level <= 1 ? 1 : level / 2);
+    const threshold = (level <= 1 ? 1 : level * Math.min(1, Math.max(0.5, handicap)));
     if (requiredSkill > threshold) {
         return false;
     }

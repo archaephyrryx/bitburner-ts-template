@@ -1,24 +1,6 @@
 import { NS } from "@ns";
 import { nodes } from "global";
-import { autoHack as autoCrack, canHack as canCrack } from "./helper";
-
-export async function hackOnce(ns: NS, server: string) {
-    const moneyThresh = ns.getServerMaxMoney(server) * 0.75;
-    const securityThresh = ns.getServerMinSecurityLevel(server) + 5;
-
-    let hasHacked = false;
-    while (!hasHacked) {
-        if (ns.getServerSecurityLevel(server) > securityThresh) {
-            await ns.weaken(server);
-        } else if (ns.getServerMoneyAvailable(server) < moneyThresh) {
-            await ns.grow(server);
-        } else {
-            // Otherwise, hack it
-            await ns.hack(server);
-            hasHacked = true;
-        }
-    }
-}
+import { canHack } from "./helper";
 
 export function listPossibleBackdoors(ns: NS): string[] {
     const ret = [];
@@ -34,24 +16,17 @@ export function listPossibleBackdoors(ns: NS): string[] {
     return ret;
 }
 
-export async function rip(ns: NS): Promise<[string, number][]> {
+export function rip(ns: NS): [string, number][] {
     const lucrative: [string, number][] = [];
 
     for (const node of nodes) {
         const servName = node.name;
         if (!ns.hasRootAccess(servName)) {
-            if (canCrack(ns, servName)) {
-                if (!autoCrack(ns, servName)) {
-                    ns.tprint(`ERROR: Failed to hack ${servName}`);
-                    continue;
-                }
-            } else {
-                continue;
-            }
+            continue;
         }
-        const moneyAvailable = ns.getServerMoneyAvailable(servName);
-        if (moneyAvailable > 0) {
-            lucrative.push([servName, moneyAvailable]);
+        const maxMoney = ns.getServerMaxMoney(servName);
+        if (maxMoney > 0) {
+            lucrative.push([servName, maxMoney]);
         }
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -63,14 +38,16 @@ export async function main(ns: NS): Promise<void> {
     listPossibleBackdoors(ns).forEach((serv) => {
         ns.tprint(`INFO: Backdoor possible on ${serv}`);
     })
-    for (; ;) {
-        const bestServs = await rip(ns);
-        if (bestServs.length === 0) {
-            ns.tprint("ERROR: No servers to hack");
-        } else {
-            const [bestServ,] = bestServs[0];
-            await hackOnce(ns, bestServ);
+    const bestServs = await rip(ns);
+    if (bestServs.length === 0) {
+        ns.tprint("ERROR: No servers to hack");
+    } else {
+        for (const serv of bestServs) {
+            if (canHack(ns, serv[0])) {
+                ns.tprint(`INFO: Can hack ${serv[0]} (max money $${ns.formatNumber(serv[1])})`);
+            } else {
+                ns.tprint(`WARN: Cannot hack ${serv[0]} (max money $${ns.formatNumber(serv[1])})`);
+            }
         }
-        await ns.sleep(1000);
     }
 }

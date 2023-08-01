@@ -1,6 +1,6 @@
 import { NS, NetscriptPort, Player, Server } from "@ns";
 import { ServicePort, nodes } from 'global';
-import { canHack } from 'helper';
+import { canCrack } from 'helper';
 
 const serverObjects: { [key: string]: Server } = {};
 
@@ -68,7 +68,7 @@ async function seasons(ns: NS): Promise<void> {
     const monitor = { timePort, labelPort };
 
     async function season(server: Server, player: Player) {
-        if (canHack(ns, server.hostname)) {
+        if (canCrack(ns, server.hostname)) {
             await hackOnce(ns, server, player, monitor);
             ns.toast(`Finished season on ${server.hostname}`, "success", 5000);
         }
@@ -77,7 +77,7 @@ async function seasons(ns: NS): Promise<void> {
     for (; ;) {
         const player = ns.getPlayer();
         for (const node of nodes) {
-            if (canHack(ns, node.name)) {
+            if (canCrack(ns, node.name)) {
                 await season(getServerObject(ns, node.name), player);
             }
         }
@@ -87,7 +87,7 @@ async function seasons(ns: NS): Promise<void> {
 export async function reap(ns: NS): Promise<number> {
     let accum = 0;
     for (const node of nodes) {
-        if (canHack(ns, node.name)) {
+        if (canCrack(ns, node.name)) {
             if (ns.getServerMoneyAvailable(node.name) > 0) {
                 accum += (await ns.hack(node.name));
             }
@@ -98,7 +98,7 @@ export async function reap(ns: NS): Promise<number> {
 
 export async function replant(ns: NS): Promise<void> {
     for (const node of nodes) {
-        if (canHack(ns, node.name)) {
+        if (canCrack(ns, node.name)) {
             await ns.grow(node.name);
             await ns.weaken(node.name);
         }

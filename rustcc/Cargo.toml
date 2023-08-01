@@ -1,0 +1,18 @@
+[package]
+name = "rustcc"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "hamming"
+path = "src/bin/hamming.rs"
+
+[[bin]]
+name = "jumpdist"
+path = "src/bin/jumpdist.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitvec = "1.0.1"
+pathfinding = "4.3.0"

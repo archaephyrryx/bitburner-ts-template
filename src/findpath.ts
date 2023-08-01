@@ -30,5 +30,6 @@ export async function main(ns: NS): Promise<void> {
         return;
     }
     const route = await search(ns, target, []);
-    ns.tprint(route);
+
+    ns.tprint(route.map((node) => "connect " + node).join(" ; "));
 }

@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 import { nodes } from 'global';
-import { canHack } from 'helper';
+import { canCrack } from 'helper';
 
 const MoneyThresholdRatio = 0.75 as const;
 const SecurityThresholdOffset = 5 as const;
@@ -38,7 +38,7 @@ async function seasons(ns: NS): Promise<void> {
 
     for (; ;) {
         for (const node of nodes) {
-            if (canHack(ns, node.name)) {
+            if (canCrack(ns, node.name)) {
                 await season(node.name);
             } else {
                 await ns.sleep(100);
@@ -50,7 +50,7 @@ async function seasons(ns: NS): Promise<void> {
 export async function reap(ns: NS): Promise<number> {
     let accum = 0;
     for (const node of nodes) {
-        if (canHack(ns, node.name)) {
+        if (canCrack(ns, node.name)) {
             if (ns.getServerMoneyAvailable(node.name) > 0) {
                 accum += (await ns.hack(node.name));
             }
@@ -61,7 +61,7 @@ export async function reap(ns: NS): Promise<number> {
 
 export async function replant(ns: NS): Promise<void> {
     for (const node of nodes) {
-        if (canHack(ns, node.name)) {
+        if (canCrack(ns, node.name)) {
             await ns.grow(node.name);
             await ns.weaken(node.name);
         }
