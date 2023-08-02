@@ -18,19 +18,6 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
                 ns.toast("Failed to purchase server", "error");
                 return mutated;
             }
-            ns.scp("startup-hack.js", hostname);
-            const res = idealThreads(ns, "startup-hack.js", hostname, ["global.js"]);
-            if (res.canRun) {
-                const nThreads = res.threads;
-                if (nThreads > 0) {
-                    ns.exec("startup-hack.js", hostname, nThreads);
-                } else {
-                    ns.toast("Server `" + hostname + "` does not have enough RAM to run hack script", "error");
-                }
-            } else {
-                ns.printf("Unable to run script %s on server %s", "startup-hack.js", hostname);
-                return mutated;
-            }
             ++i;
         }
         //Make the script wait for a second before looping again.
@@ -38,33 +25,6 @@ export async function purchaseMaximum(ns: NS, ram = 8): Promise<boolean> {
         await ns.sleep(1000);
     }
     return mutated;
-}
-
-function goldfish(ns: NS, serv: string) {
-    const res = idealThreads(ns, "harvest-lwt.js", serv, ["global.js", "helper.js"]);
-    if (res.canRun) {
-        const nThreads = res.threads;
-        if (nThreads > 0) {
-            ns.exec("harvest-lwt.js", serv, { threads: nThreads }, "seasons");
-        } else {
-            ns.toast("Server `" + serv + "` failed to receive hack script from `home`", "error");
-        }
-    } else {
-        ns.printf("Unable to run script %s on server %s", "harvest-lwt.js", serv);
-    }
-}
-
-export async function optimizeScripts(ns: NS, force = false) {
-    const servers = ns.getPurchasedServers();
-    for (let i = 0; i < servers.length; i++) {
-        const serv = servers[i];
-        if (force) {
-            ns.scriptKill("startup-hack.js", serv);
-            ns.scriptKill("harvest-lwt.js", serv);
-        }
-        goldfish(ns, serv);
-        await ns.sleep(200);
-    }
 }
 
 function getMinMaxRam(ns: NS): [number, number] {
@@ -98,7 +58,6 @@ export async function balanceServerRam(ns: NS): Promise<boolean> {
                     }
                     if (ns.upgradePurchasedServer(server, maxRam)) {
                         ns.tprintf("Upgraded server %s to %dGB", server, maxRam);
-                        goldfish(ns, server);
                         continue;
                     } else {
                         ns.tprintf("script error: unable to purchase %dGB upgrade for server %s", maxRam, server);
@@ -111,7 +70,6 @@ export async function balanceServerRam(ns: NS): Promise<boolean> {
     }
     return true;
 }
-
 
 export async function doubleAllServerRam(ns: NS): Promise<boolean> {
     const servers = ns.getPurchasedServers();
@@ -132,7 +90,6 @@ export async function doubleAllServerRam(ns: NS): Promise<boolean> {
         }
         if (ns.upgradePurchasedServer(serv, targetRam)) {
             numUpgrades++;
-            goldfish(ns, serv);
         } else {
             ns.tprintf("script error: unable to purchase %s upgrade for server %s", ns.formatRam(targetRam), serv);
             continue;
@@ -143,9 +100,7 @@ export async function doubleAllServerRam(ns: NS): Promise<boolean> {
 
 export async function main(ns: NS): Promise<void> {
     async function once() {
-        if (await doubleAllServerRam(ns)) {
-            await optimizeScripts(ns);
-        }
+        await doubleAllServerRam(ns);
     }
     async function init() {
         if (await purchaseMaximum(ns, 8)) {
@@ -161,9 +116,6 @@ export async function main(ns: NS): Promise<void> {
             break;
         case "balance":
             await balanceServerRam(ns);
-            break;
-        case "reboot":
-            await optimizeScripts(ns, true);
             break;
         case "loop":
             if (Number.isSafeInteger(ns.args[1])) {
