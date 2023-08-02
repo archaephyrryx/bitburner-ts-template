@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 
 async function search(ns: NS, target: string, route: string[] = []): Promise<string[]> {
     const routePrefix: string[] = [...route];
@@ -32,4 +32,9 @@ export async function main(ns: NS): Promise<void> {
     const route = await search(ns, target, []);
 
     ns.tprint(route.map((node) => "connect " + node).join(" ; "));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    return [...data.servers];
 }

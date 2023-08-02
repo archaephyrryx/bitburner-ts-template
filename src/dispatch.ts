@@ -1,12 +1,30 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 import { getGraph } from "census";
 import { NodeInfo } from "global";
 import { canHack } from "./helper";
 import { rip } from "./rip";
 
-const homeReserve = 16;
+const homeReserve = 64;
+const defaultHGW = { hack: 1, grow: 10, weaken: 2 };
 
-const hgw = { hack: 1, grow: 10, weaken: 2 };
+
+function getHGW(ns: NS, server: string): { hack: number, grow: number, weaken: number } {
+
+    let money = ns.getServerMoneyAvailable(server);
+    if (money === 0) money = 1;
+    const maxMoney = ns.getServerMaxMoney(server);
+    const minSec = ns.getServerMinSecurityLevel(server);
+    const sec = ns.getServerSecurityLevel(server);
+
+    const hack = Math.ceil(ns.hackAnalyzeThreads(server, money));
+    const grow = Math.ceil(ns.growthAnalyze(server, maxMoney / money));
+    const weaken = Math.ceil((sec - minSec) * 20);
+    if (hack < weaken && weaken < grow) {
+        return { hack, grow, weaken };
+    } else {
+        return defaultHGW;
+    }
+}
 
 type ThreadInfo = { maxThreads: number, hackThreads: number, growThreads: number, weakenThreads: number };
 
@@ -130,11 +148,11 @@ export class ThreadPool {
 
 export async function main(ns: NS): Promise<void> {
     let graph = getGraph(ns);
+    ns.scriptKill("hack.js", "home");
+    ns.scriptKill("grow.js", "home");
+    ns.scriptKill("weaken.js", "home");
     for (const serverInfo of graph) {
         if (serverInfo.name === "home") {
-            ns.scriptKill("hack.js", "home");
-            ns.scriptKill("grow.js", "home");
-            ns.scriptKill("weaken.js", "home");
             continue;
         }
         if (!ns.serverExists(serverInfo.name)) {
@@ -147,6 +165,8 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getServerUsedRam");
     ns.disableLog("getServerMaxRam");
     ns.disableLog("getServerMoneyAvailable");
+    ns.disableLog("getServerMaxMoney");
+    ns.disableLog("getServerMinSecurityLevel");
     ns.disableLog("getServerSecurityLevel");
     ns.disableLog("sleep");
 
@@ -175,6 +195,7 @@ export async function main(ns: NS): Promise<void> {
         const available = headCount.maxThreads - (headCount.hackThreads + headCount.growThreads + headCount.weakenThreads);
         ns.print(`Available: ${available}`);
 
+        const hgw = getHGW(ns, target);
         let newHack = Math.ceil((available * hgw.hack) / (hgw.hack + hgw.grow + hgw.weaken));
         let newGrow = Math.floor((available * hgw.grow) / (hgw.hack + hgw.grow + hgw.weaken));
         let newWeaken = available - newHack - newGrow;
@@ -267,7 +288,13 @@ export async function main(ns: NS): Promise<void> {
         graph = getGraph(ns);
         const currentSec = ns.getServerSecurityLevel(target);
         const currentMoney = ns.getServerMoneyAvailable(target);
+        ns.clearLog();
         ns.print(`Server Snapshot: Security = ${currentSec} (Min: ${minSec}), Money = $${ns.formatNumber(currentMoney)}`);
         pool.update(ns, graph);
     }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]): string[] {
+    return [...data.servers]
 }
