@@ -22,7 +22,7 @@ export function explore(ns: NS): NodeInfo[] {
         const next = ns.scan(node);
         frontier = frontier.concat(next);
     }
-    info.sort((a, b) => (a.ports > b.ports) ? 1 : (a.ports < b.ports) ? -1 : (a.skill - b.skill));
+    info.sort((a, b) => (a.name == "home") ? -1 : (a.ports > b.ports) ? 1 : (a.ports < b.ports) ? -1 : (a.skill - b.skill));
     return info;
 }
 

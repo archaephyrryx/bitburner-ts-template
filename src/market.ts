@@ -14,20 +14,17 @@ function printStockInfo(ns: NS, stock: string) {
     if (currentOwned < 1) {
         return;
     }
-    ns.printf("Stock Information for %s", stock);
     const currentAveragePrice = currentPosition[1];
     const currentTotalValue = currentOwned * currentBidPrice;
     const currentTotalCost = currentOwned * currentAveragePrice;
-    const currentProfit = currentTotalValue - currentTotalCost;
+    const currentProfit = currentTotalValue - currentTotalCost - expectedCommission;
     const currentForecast = ns.stock.getForecast(stock);
     const currentProfitPercentage = currentProfit / currentTotalCost;
-    ns.printf(">%s", stock);
-    ns.print(`  Owned: ${ns.formatNumber(currentOwned, 3, 1000, true)} shares (max: ${ns.formatNumber(ns.stock.getMaxShares(stock), 3, 1000, true)})`);
-    ns.print("  Average Price: $" + ns.formatNumber(currentAveragePrice, 3, 1000, false));
+    ns.print(`>>${stock}: ${ns.formatNumber(currentOwned, 3, 1000, true)} shares (max: ${ns.formatNumber(ns.stock.getMaxShares(stock), 3, 1000, true)})`);
     ns.printf("  Forecast: %0.02f", currentForecast);
+    ns.print("  Average Price: $" + ns.formatNumber(currentAveragePrice, 3, 1000, false));
     ns.print("  Total Value: " + ns.formatNumber(currentTotalValue, 3, 1000, true));
-    ns.print("  Profit: " + ns.formatNumber(currentProfit));
-    ns.print("  Profit Percentage: " + ns.formatPercent(currentProfitPercentage, 2));
+    ns.print(`  Profit: ${ns.formatNumber(currentProfit)} (${ns.formatPercent(currentProfitPercentage, 2)})`);
 }
 
 export function increaseBudget(ns: NS, fraction: string | number | boolean): boolean {
@@ -92,14 +89,18 @@ export async function autoTrader(ns: NS, canBuy = true) {
         for (const stock of randomOrderStocks) {
             const currentBidPrice = ns.stock.getBidPrice(stock);
             const currentAskPrice = ns.stock.getAskPrice(stock);
+
             const currentPosition = ns.stock.getPosition(stock);
             const currentOwned = currentPosition[0];
+            const currentAveragePrice = currentPosition[1];
             const currentForecast = ns.stock.getForecast(stock);
-            const originalValue = currentOwned * currentBidPrice;
-            const grossPrice = currentOwned * currentAskPrice;
-            const netPrice = grossPrice - expectedCommission;
-            const netProfit = netPrice - originalValue;
-            const netProfitPercentage = netProfit / originalValue;
+
+            const principal = currentOwned * currentAveragePrice;
+            const grossYield = currentOwned * currentBidPrice;
+            const netYield = grossYield - expectedCommission;
+            const netProfit = netYield - principal;
+            const netProfitPercentage = netProfit / principal;
+
             let bought = false;
             let sold = false;
 
@@ -137,7 +138,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                 if (netProfitPercentage >= 0) {
                     const sellPrice = ns.stock.sellStock(stock, currentOwned);
                     ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
-                    ns.toast(`Made ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatNumber(netProfitPercentage * 100, 2, 1000, true)}%) on ${stock} sale`, "success", 5000);
+                    ns.toast(`Made ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatPercent(netProfitPercentage)}) on ${stock} sale`, "success", 5000);
                     totalBudget += sellPrice * currentOwned;
                     cycleStats.sold.push(stock);
                     sold = true;
@@ -147,7 +148,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
             }
             if (!bought && !sold) {
                 if (currentOwned > 0) {
-                    if (netProfitPercentage >= 0.2) {
+                    if (netProfitPercentage >= 0.13) {
                         const sellPrice = ns.stock.sellStock(stock, currentOwned);
                         ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
                         ns.toast(`Made ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatPercent(netProfitPercentage)}) on ${stock} sale`, "success", 5000);
@@ -178,7 +179,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
 
         ns.printf("====== AutoTrader cycle %d complete ======", cycle);
         portfolioSize = cycleStats.purchased.length + cycleStats.maintained.length;
-        await ns.sleep(8000);
+        await ns.sleep(6000);
     }
 }
 
@@ -188,9 +189,11 @@ export async function main(ns: NS): Promise<void> {
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     switch (ns.args[0]) {
         case "autotrade":
+            ns.tail();
             await autoTrader(ns);
             return;
         case "autosell":
+            ns.tail();
             await autoTrader(ns, false);
             return;
         default:

@@ -1,26 +1,10 @@
 import { AutocompleteData, NS } from "@ns";
+import { recursiveScan } from "./find_server";
 
-async function search(ns: NS, target: string, route: string[] = []): Promise<string[]> {
-    const routePrefix: string[] = [...route];
-    if (routePrefix.length === 0) {
-        routePrefix.push("home");
-    }
-    let ret: string[] = [];
-    const neighbors = ns.scan(route[route.length - 1]);
-    for (const node of neighbors) {
-        if (node === target) {
-            routePrefix.push(node);
-            return routePrefix;
-        }
-        if (!routePrefix.includes(node)) {
-            ret = await search(ns, target, [...routePrefix, node]);
-            if (ret.length > 0) {
-                return ret;
-            }
-        }
-        await ns.sleep(100);
-    }
-    return ret;
+function search(ns: NS, target: string): string[] {
+    const route: string[] = [];
+    recursiveScan(ns, '', "home", target, route);
+    return route;
 }
 
 export async function main(ns: NS): Promise<void> {
@@ -29,7 +13,7 @@ export async function main(ns: NS): Promise<void> {
         ns.tprintf("ERROR: %s does not exist", target);
         return;
     }
-    const route = await search(ns, target, []);
+    const route = search(ns, target);
 
     ns.tprint(route.map((node) => "connect " + node).join(" ; "));
 }

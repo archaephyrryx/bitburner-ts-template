@@ -1,6 +1,6 @@
 import { NS, AutocompleteData } from "@ns";
 
-function recursiveScan(ns: NS, parent: string, server: string, target: string, route: string[]): boolean {
+export function recursiveScan(ns: NS, parent: string, server: string, target: string, route: string[]): boolean {
     const children = ns.scan(server);
     for (const child of children) {
         if (parent == child) {
