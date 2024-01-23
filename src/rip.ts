@@ -1,11 +1,13 @@
 import { NS } from "@ns";
-import { nodes } from "global";
+import { getGraph } from "./census";
 import { canHack } from "./helper";
 
 export function listPossibleBackdoors(ns: NS): string[] {
     const ret = [];
+    const nodes = getGraph(ns, true);
     for (const node of nodes) {
         const servName = node.name;
+        if (!ns.serverExists(servName)) continue;
         if (ns.hasRootAccess(servName)) {
             const server = ns.getServer(servName);
             if (!(server.backdoorInstalled ?? false)) {
@@ -19,8 +21,12 @@ export function listPossibleBackdoors(ns: NS): string[] {
 export function rip(ns: NS): [string, number][] {
     const lucrative: [string, number][] = [];
 
+    const nodes = getGraph(ns, true);
     for (const node of nodes) {
         const servName = node.name;
+        if (!ns.serverExists(servName)) {
+            continue;
+        }
         if (!ns.hasRootAccess(servName)) {
             continue;
         }

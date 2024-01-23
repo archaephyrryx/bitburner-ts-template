@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { getGraph } from "./census";
 
 const serverOrder = ["CSEC", "avmnite-02h", "I.I.I.I", "run4theh111z"] as const;
 
@@ -9,7 +10,24 @@ export const backdoors: { [key: string]: number } = {
     "run4theh111z": 4,
 };
 
-// ["home","harakiri-sushi","CSEC","phantasy","crush-fitness","catalyst","alpha-ent","galactic-cyber","omnia","solaris","taiyang-digital","run4theh111z"]
+function isBackdoored(ns: NS, serv: string): boolean {
+    return ns.getServer(serv).backdoorInstalled ?? false;
+}
+
+async function missingBackdoors(ns: NS): Promise<string[]> {
+    const ret = [];
+    const nodes = getGraph(ns, true);
+    for (const node of nodes) {
+        const name = node.name;
+        if (name === "home" || name.startsWith("pserv")) {
+            continue;
+        }
+        if (!isBackdoored(ns, name)) {
+            ret.push(name);
+        }
+    }
+    return ret;
+}
 
 async function acquirePorts(ns: NS, serv: string, ports: number): Promise<void> {
     if (ports == 5) {
@@ -72,8 +90,17 @@ export async function main(ns: NS): Promise<void> {
         return
     }
 
-    const nextServ = ns.args[0] as typeof serverOrder[number] | undefined;
-    if (nextServ && ns.serverExists(nextServ)) {
+    const nextServ = ns.args[0] as typeof serverOrder[number] | "all" | undefined;
+    if (nextServ === "all") {
+        const rem = await missingBackdoors(ns);
+        if (rem.length > 0) {
+            for (const serv of rem) {
+                ns.tprint(`Potential backdoor available on server: ${serv}`);
+            }
+        } else {
+            ns.tprint("No servers remain to backdoor...");
+        }
+    } else if (nextServ && ns.serverExists(nextServ)) {
         await capture(nextServ);
         ns.toast("Backdoor preparations on " + nextServ + " complete", "success", 2000);
     } else {

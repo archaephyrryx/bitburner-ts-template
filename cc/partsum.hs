@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Main (main) where
 
@@ -34,14 +35,16 @@ partitionP n
   where
     terms =
       [ memo partitions (n - i)
-        | i <- takeWhile (<= n) ofsets
+        | i <- takeWhile (<= n) offsets
       ]
     signs = cycle [1, 1, -1, -1]
 
-ofsets :: [Int]
-ofsets = scanl1 (+) $ mix [1, 3 ..] [1, 2 ..]
+offsets :: [Int]
+offsets = scanl1 (+) $ mix [1, 3 ..] [1, 2 ..]
   where
     mix a b = concat $ zipWith (\x y -> [x, y]) a b
 
 main :: IO ()
-main = print $ (partitionP 62) - 1
+main = do
+  val <- (read @Int) <$> getLine
+  print $ (partitionP val) - 1

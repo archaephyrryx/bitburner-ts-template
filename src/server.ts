@@ -111,10 +111,18 @@ export async function upgradeServerRam(ns: NS, server: string, targetRam: number
         const costToUpgrade = ns.getPurchasedServerUpgradeCost(server, targetRam);
         if (costToUpgrade > 0) {
             const moneyNeeded = costToUpgrade;
-            while (ns.getServerMoneyAvailable("home") < moneyNeeded) {
-                ns.print(`Waiting for money to upgrade ${server}: $${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/$${ns.formatNumber(moneyNeeded)} (${ns.formatPercent(ns.getServerMoneyAvailable("home") / moneyNeeded)}, Need $${ns.formatNumber(moneyNeeded - ns.getServerMoneyAvailable("home"))} more)`);
-                await ns.sleep(1000);
-            }
+            let moneyAvailable: number;
+            ns.disableLog("sleep");
+            ns.disableLog("getServerMoneyAvailable");
+            do {
+                moneyAvailable = ns.getServerMoneyAvailable("home");
+                if (moneyAvailable < moneyNeeded) {
+                    ns.print(`Waiting for money to upgrade ${server}: $${ns.formatNumber(moneyAvailable)}/$${ns.formatNumber(moneyNeeded)} (${ns.formatPercent(moneyAvailable / moneyNeeded)}, Need $${ns.formatNumber(moneyNeeded - moneyAvailable)} more)`);
+                    await ns.sleep(1000);
+                }
+            } while (moneyAvailable < moneyNeeded);
+            ns.enableLog("sleep");
+            ns.enableLog("getServerMoneyAvailable");
             if (ns.upgradePurchasedServer(server, targetRam)) {
                 ns.print(`SUCCESS: ${server} RAM increased from ${ns.formatRam(currentRam)} ===> ${ns.formatRam(targetRam)}`);
                 return true;

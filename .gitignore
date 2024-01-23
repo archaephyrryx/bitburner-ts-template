@@ -7,3 +7,16 @@ target
 *.o
 *.hi
 *.lock
+cc/caesar
+cc/ip
+cc/partsum
+cc/lpf
+*.c
+**/*.err
+**/*.mh
+**/*.mih
+mcc/gridpaths
+mcc/interval
+mcc/spiralize
+mcc/Mercury/**/*
+mcc/trader

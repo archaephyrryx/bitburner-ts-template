@@ -4,5 +4,5 @@ import Lib (State (Start), calculate, runState)
 
 main :: IO ()
 main =
-  let (k, ps) = (5, [89,35,105,144,60,62,156,59,94,125,41,132,190,21,199,38,39,162,134,120,135,40,196,47,158])
+  let (k, ps) = (2, [33,140,138,62,47,67,137,21,176,177,175,199,49,86,40,29,76,185])
    in print $ calculate $ runState (Start k) ps

@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { nodes } from 'global';
+import { getGraph } from 'census';
 
 export async function autoCrack(ns: NS, server: string, portsHint?: number): Promise<void> {
     if (!(server === "home" || ns.hasRootAccess(server))) {
@@ -47,6 +47,7 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("sleep");
 
     const orderedNodes = []
+    const nodes = getGraph(ns, true);
 
     for (const servInfo of nodes) {
         const serv = servInfo.name;

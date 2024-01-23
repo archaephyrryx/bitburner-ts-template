@@ -5,8 +5,8 @@ import { explore } from "./graph";
 export type Graph = { populated: false } | { populated: true, nodes: NodeInfo[] }
 export let graph: Graph = { populated: false };
 
-export function getGraph(ns: NS): NodeInfo[] {
-    if (!graph.populated) {
+export function getGraph(ns: NS, force = false): NodeInfo[] {
+    if (!graph.populated || force) {
         graph = { populated: true, nodes: explore(ns) };
     }
     return graph.nodes;
