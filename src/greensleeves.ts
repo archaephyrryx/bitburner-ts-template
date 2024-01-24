@@ -25,6 +25,10 @@ export async function main(ns: NS) {
     const nSleeves = ns.sleeve.getNumSleeves();
     const sleeveInfos: Array<SleeveInfo> = [];
     for (let i = 0; i < nSleeves; i++) {
+        const task = ns.sleeve.getTask(i);
+        if (task === null || task === undefined) {
+            ns.sleeve.setToCommitCrime(i, "Shoplift");
+        }
         sleeveInfos.push({ ...ns.sleeve.getSleeve(i), task: ns.sleeve.getTask(i) ?? undefined });
     }
 

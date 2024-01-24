@@ -46,6 +46,18 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
 
+    ns.exec("dispatch.js", "home");
+    ns.exec("monitor.js", "home");
+    if (ns.stock.has4SDataTIXAPI()) {
+        ns.exec("market.js", "home", {}, "autotrade");
+    }
+    ns.exec("custom-stats.js", "home");
+    ns.exec("hackNet.js", "home", {}, "init");
+    ns.exec("server.js", "home", {}, "init");
+    ns.exec("greensleeves.js", "home");
+
+
+
     const orderedNodes = []
     const nodes = getGraph(ns, true);
 
