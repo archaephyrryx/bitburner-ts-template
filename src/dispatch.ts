@@ -1,4 +1,4 @@
-import { AutocompleteData, NS, Player, Server } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 import { getGraph } from "census";
 import { NodeInfo } from "global";
 import { canHack } from "./helper";
@@ -6,9 +6,10 @@ import { rip } from "./rip";
 
 const homeReserve = 64;
 const batchSize = 10_000;
-const defaultHGW = { hack: 1, grow: 10, weaken: 2 };
-// const defaultHGW = { hack: 1, grow: 0, weaken: 0 };
 
+const defaultHGW = { hack: 1, grow: 4, weaken: 2 };
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type HGWOutcome = {
     timeElapsed: number,
     moneyYield: number,
@@ -17,6 +18,7 @@ type HGWOutcome = {
     serverMoneyPercent: number,
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hackFraction(hgw: HGWRatio): number {
     return hgw.hack / (hgw.hack + hgw.grow + hgw.weaken);
 }
@@ -29,10 +31,6 @@ function weakenFraction(hgw: HGWRatio): number {
     return hgw.weaken / (hgw.hack + hgw.grow + hgw.weaken);
 }
 
-function hasFormulas(ns: NS) {
-    return ns.fileExists("Formulas.exe", "home");
-}
-
 type HGWRatio = { hack: number, grow: number, weaken: number }
 
 async function stagger(ns: NS) {
@@ -43,9 +41,12 @@ async function stagger(ns: NS) {
 function balanceHGW(ns: NS, server: string, pool: ThreadPool, hgw: HGWRatio): HGWRatio {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const iterLimit = 100;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const poolSize = pool.size();
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const plyrObj = ns.getPlayer();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const servObj = ns.getServer(server);
 
     /*
@@ -268,13 +269,9 @@ function balanceHGW(ns: NS, server: string, pool: ThreadPool, hgw: HGWRatio): HG
 }
 
 async function getHGW(ns: NS, server: string, pool: ThreadPool): Promise<HGWRatio> {
-    if (hasFormulas(ns)) {
-        const hgw = defaultHGW;
-        // TODO - use formulas API to calculate ideal HGW
-        return balanceHGW(ns, server, pool, hgw);
-    } else {
-        return defaultHGW;
-    }
+    const hgw = defaultHGW;
+    // TODO - use formulas API to calculate ideal HGW
+    return balanceHGW(ns, server, pool, hgw);
 }
 
 type ThreadInfo = { maxThreads: number, hackThreads: number, growThreads: number, weakenThreads: number };
@@ -356,18 +353,18 @@ export class ThreadPool {
         this.pool[server].growThreads += nThreads;
     }
 
-    getInfo(server: string) {
-        if (!Object.keys(this.pool).includes(server)) {
-            throw new Error(`Server ${server} not in pool`);
-        }
-        return this.pool[server];
-    }
-
     public addWeakenThreads(server: string, nThreads: number): void {
         if (!Object.keys(this.pool).includes(server)) {
             throw new Error(`Server ${server} not in pool`);
         }
         this.pool[server].weakenThreads += nThreads;
+    }
+
+    getInfo(server: string) {
+        if (!Object.keys(this.pool).includes(server)) {
+            throw new Error(`Server ${server} not in pool`);
+        }
+        return this.pool[server];
     }
 
     public addNewServer(server: string, nThreads: number): void {
@@ -460,115 +457,104 @@ export async function main(ns: NS): Promise<void> {
         const available = headCount.maxThreads - (headCount.hackThreads + headCount.growThreads + headCount.weakenThreads);
         ns.print(`Available: ${available}`);
 
-        let newHack = Math.ceil(available * hackFraction(hgw));
+        let newWeaken = Math.ceil(available * weakenFraction(hgw));
         let newGrow = Math.floor(available * growFraction(hgw));
-        let newWeaken = available - newHack - newGrow;
+        let newHack = available - newWeaken - newGrow;
 
         if (newHack + newGrow + newWeaken > 0) {
             ns.print(`New threads: ${newHack} hack, ${newGrow} grow, ${newWeaken} weaken`);
-            if (newGrow > 0) ns.print(`Spawning ${newGrow} new grow threads across network...`);
-            outer: for (const server of graph.map((node) => node.name)) {
-                if (newGrow <= 0) break;
-                if (!ns.serverExists(server)) continue;
-                if (!ns.hasRootAccess(server)) continue;
+            const graphNames = graph.map((node) => node.name);
+            servers: for (const server of graphNames) {
+                if (!ns.serverExists(server)) continue servers;
+                if (!ns.hasRootAccess(server)) continue servers;
                 const info = pool.getInfo(server);
                 const newServerThreads = info.maxThreads - (info.hackThreads + info.growThreads + info.weakenThreads);
                 let remainingThreads = newServerThreads;
-                while (remainingThreads > 0 && newGrow > 0) {
-                    const nGrow = Math.min(newGrow, batchSize);
-                    let threads = remainingThreads;
-                    if (threads > nGrow) {
-                        threads = nGrow;
-                    } else if (threads <= 0) {
-                        continue outer;
-                    }
-                    if (!ns.fileExists("grow.js", server)) {
-                        if (server === "home") {
-                            ns.print("Failed to find grow.js in home");
-                            break;
-                        }
-                        const res = ns.scp("grow.js", server, "home");
-                        if (!res) {
-                            ns.print(`Failed to scp grow.js to ${server}`);
-                            break;
-                        }
-                    }
-                    if (ns.exec("grow.js", server, { threads }, target) === 0) continue;
-                    pool.addGrowThreads(server, threads);
-                    newGrow -= threads;
-                    remainingThreads -= threads;
-                    await stagger(ns);
-                }
-                ns.print(`Spawned ${newServerThreads} grow threads on ${server}, ${newGrow} remaining`);
-            }
+                while (remainingThreads > 0) {
+                    let spawnedThreads = 0;
+                    const batchGrow = Math.min(Math.ceil(growFraction(hgw) * batchSize), newGrow);
+                    const batchWeaken = Math.min(Math.ceil(weakenFraction(hgw) * batchSize), newWeaken);
+                    const batchHack = Math.min(Math.ceil(hackFraction(hgw) * batchSize), newHack);
 
-            if (newWeaken > 0) ns.print(`Spawning ${newWeaken} new weaken threads across network...`);
-            outer: for (const server of graph.map((node) => node.name)) {
-                if (newWeaken <= 0) break;
-                if (!ns.serverExists(server)) continue;
-                if (!ns.hasRootAccess(server)) continue;
-                const info = pool.getInfo(server);
-                const newServerThreads = info.maxThreads - (info.hackThreads + info.growThreads + info.weakenThreads);
-                let remainingThreads = newServerThreads;
-                while (remainingThreads > 0 && newWeaken > 0) {
-                    let threads = remainingThreads;
-                    const nWeaken = Math.min(newWeaken, batchSize);
-                    if (threads > nWeaken) {
-                        threads = nWeaken;
-                    } else if (threads <= 0) {
-                        continue outer;
-                    }
-                    if (!ns.fileExists("weaken.js", server)) {
-                        if (server === "home") {
-                            ns.print("Failed to find weaken.js in home");
-                            break;
+                    if (batchWeaken > 0) {
+                        const nWeaken = batchWeaken;
+                        let threads = remainingThreads;
+                        if (threads > nWeaken) {
+                            threads = nWeaken;
                         }
-                        const res = ns.scp("weaken.js", server, "home");
-                        if (!res) {
-                            ns.print(`Failed to scp weaken.js to ${server}`);
-                            break;
+                        if (threads > 0) {
+                            if (!ns.fileExists("weaken.js", server)) {
+                                if (server === "home") {
+                                    ns.tprint("ERROR: Failed to find weaken.js in home");
+                                    return;
+                                }
+                                const res = ns.scp("weaken.js", server, "home");
+                                if (!res) {
+                                    ns.tprint(`ERROR: Failed to scp weaken.js to ${server}`);
+                                    return;
+                                }
+                            }
+                            if (ns.exec("weaken.js", server, { threads }, target) !== 0) {
+                                spawnedThreads += threads;
+                                pool.addWeakenThreads(server, threads);
+                                newWeaken -= threads;
+                                remainingThreads -= threads;
+                            }
                         }
                     }
-                    if (ns.exec("weaken.js", server, { threads }, target) === 0) continue;
-                    pool.addWeakenThreads(server, threads);
-                    newWeaken -= threads;
-                    remainingThreads -= threads;
+                    if (batchGrow > 0) {
+                        const nGrow = batchGrow;
+                        let threads = remainingThreads;
+                        if (threads > nGrow) {
+                            threads = nGrow;
+                        }
+                        if (threads > 0) {
+                            if (!ns.fileExists("grow.js", server)) {
+                                if (server === "home") {
+                                    ns.tprint("ERROR: Failed to find grow.js in home");
+                                    return;
+                                }
+                                const res = ns.scp("grow.js", server, "home");
+                                if (!res) {
+                                    ns.tprint(`ERROR: Failed to scp grow.js to ${server}`);
+                                    return;
+                                }
+                            }
+                            if (ns.exec("grow.js", server, { threads }, target) !== 0) {
+                                spawnedThreads += threads;
+                                pool.addGrowThreads(server, threads);
+                                newGrow -= threads;
+                                remainingThreads -= threads;
+                            }
+                        }
+                    }
+                    if (batchHack > 0) {
+                        const nHack = batchHack;
+                        let threads = remainingThreads;
+                        if (threads > nHack) {
+                            threads = nHack;
+                        }
+                        if (threads > 0) {
+                            if (server !== "home") {
+                                const res = ns.scp("hack.js", server, "home");
+                                if (!res) {
+                                    ns.print(`Failed to scp hack.js to ${server}`);
+                                }
+                            }
+                            if (ns.exec("hack.js", server, { threads }, target) !== 0) {
+                                spawnedThreads += threads;
+                                pool.addHackThreads(server, threads);
+                                newHack -= threads;
+                                remainingThreads -= threads;
+                            }
+                        }
+                    }
+                    if (spawnedThreads == 0) {
+                        continue servers;
+                    }
                     await stagger(ns);
                 }
-                ns.print(`Spawned ${newServerThreads} weaken threads on ${server}, ${newWeaken} remaining`);
-            }
-
-            if (newHack > 0) ns.print(`Spawning ${newHack} new hacking threads across network...`);
-            outer: for (const server of graph.map((node) => node.name)) {
-                if (newHack <= 0) {
-                    break;
-                }
-                if (!ns.serverExists(server)) continue;
-                if (!ns.hasRootAccess(server)) continue;
-                const info = pool.getInfo(server);
-                const newServerThreads = info.maxThreads - (info.hackThreads + info.growThreads + info.weakenThreads);
-                let remainingThreads = newServerThreads;
-                while (remainingThreads > 0 && newHack > 0) {
-                    const nHack = Math.min(newHack, batchSize);
-                    let threads = remainingThreads;
-                    if (threads > nHack) {
-                        threads = nHack;
-                    } else if (threads <= 0) {
-                        continue outer;
-                    }
-                    if (server !== "home") {
-                        const res = ns.scp("hack.js", server, "home");
-                        if (!res) {
-                            ns.print(`Failed to scp hack.js to ${server}`);
-                        }
-                    }
-                    if (ns.exec("hack.js", server, { threads }, target) === 0) continue;
-                    pool.addHackThreads(server, threads);
-                    newHack -= threads;
-                    remainingThreads -= threads;
-                    await stagger(ns);
-                }
-                ns.print(`Spawned ${newServerThreads} hack threads on ${server}, ${newHack} remaining`);
+                await stagger(ns);
             }
         }
 

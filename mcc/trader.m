@@ -60,9 +60,24 @@ calculate(branch(State, Act, Wait), X) :-
 :- func calculate(decision_tree) = int is det.
 calculate(Tree) = X :- calculate(Tree, X).
 
+% Reduce any monotonic runs to their endpoints as no profitable trades can occur in the middle
+:- func preshrink(list(int)) = list(int).
+:- pred preshrink(list(int)::in, list(int)::out) is det.
+preshrink(Xs) = Ys :- preshrink(Xs, Ys).
+
+preshrink([], []).
+preshrink([X], [X]).
+preshrink([X, Y], [X, Y]).
+preshrink([X, Y, Z | Xt], Ys) :-
+  ( ((X =< Y, Y =< Z) ; (X >= Y, Y >= Z)) -> preshrink([X, Z | Xt], Ys)
+  ; preshrink([Y, Z | Xt], Yt),
+    Ys = [X | Yt]
+  ).
+
 main(!IO) :-
     Trades = no_limit,
-    Ps = [164,5,70,51,163,12,142,80,76,125,194,148,104,1,113],
+    Ps = [91,113,27,22,6,195,193,106,190,69,96,31,130,119,86,198,43,68,34,117,134,79,73,113,34,88,41,70,99,45,105,37,9,119,54,81,3,55,57,95,63,72,145,178,161,2,58,97],
+    preshrink(Ps, Ps1),
     State = start(Trades),
-    Result = calculate(run_state(State, Ps)),
+    Result = calculate(run_state(State, Ps1)),
     io.format("%d", [i(Result)], !IO).

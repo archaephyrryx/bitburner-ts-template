@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 use bitvec::{prelude::{BitSlice, BitVec, bitvec, BitOrder, Lsb0}, store::BitStore};
 
-fn decoded<T: BitStore, O: BitOrder>(bv: &BitSlice<T, O>) -> i32 {
+fn decoded<T: BitStore, O: BitOrder>(bv: &BitSlice<T, O>) -> i64 {
     let mut databits = BitVec::<T, O>::new();
     let mut res = 0;
     let mut n = 1;
@@ -20,7 +20,7 @@ fn decoded<T: BitStore, O: BitOrder>(bv: &BitSlice<T, O>) -> i32 {
     res
 }
 
-fn hamming_check(bv: &mut BitSlice) -> i32 {
+fn hamming_check(bv: &mut BitSlice) -> i64 {
     let ck0 = bv.count_ones();
     if (ck0 % 2) == 0 {
         return decoded(bv);
@@ -63,7 +63,7 @@ fn hamming_check(bv: &mut BitSlice) -> i32 {
 }
 
 fn encode(buf: &str) -> String {
-    let value = buf.trim().parse::<i32>().expect("Not a valid integer");
+    let value = buf.trim().parse::<i64>().expect("Not a valid integer");
     let mut value_bits = bitvec![];
     let mut tmp = value;
     while tmp > 0 {
