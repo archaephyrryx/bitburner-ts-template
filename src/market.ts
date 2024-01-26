@@ -1,8 +1,19 @@
 import { NS } from '@ns';
+import { stockValue, addStockInfo, StockInfo, Symbols, aggregateStockInfo } from './stock_helper';
 
-let globalStocks: string[];
-let totalBudget = 0;
 const expectedCommission = 100000;
+
+export let globalStocks: string[];
+
+export const WaterMarks = {
+    forceBuy: 0.90,
+    tripleSymbol: 0.80,
+    overAllocate: 0.75,
+    doubleSymbol: 0.70,
+    purchaseAbove: 0.60,
+    sellBelow: 0.50,
+};
+
 
 type CycleStats = { purchased: string[], sold: string[], ignored: string[], maintained: string[] };
 const emptyCycleStats: () => CycleStats = () => { return { purchased: [], sold: [], ignored: [], maintained: [] } };
@@ -20,32 +31,9 @@ function printStockInfo(ns: NS, stock: string) {
     const currentProfit = currentTotalValue - currentTotalCost - expectedCommission;
     const currentForecast = ns.stock.getForecast(stock);
     const currentProfitPercentage = currentProfit / currentTotalCost;
-    ns.print(`>>${stock}: ${ns.formatNumber(currentOwned, 3, 1000, true)} shares (max: ${ns.formatNumber(ns.stock.getMaxShares(stock), 3, 1000, true)})`);
-    ns.printf("  Forecast: %0.02f", currentForecast);
-    ns.print("  Average Price: $" + ns.formatNumber(currentAveragePrice, 3, 1000, false));
-    ns.print("  Total Value: " + ns.formatNumber(currentTotalValue, 3, 1000, true));
-    ns.print(`  Profit: ${ns.formatNumber(currentProfit)} (${ns.formatPercent(currentProfitPercentage, 2)})`);
-}
+    ns.print(`>>${stock}: ${ns.formatNumber(currentOwned, 3, 1000, true)} shares (max: ${ns.formatNumber(ns.stock.getMaxShares(stock), 3, 1000, true)}) @${ns.formatNumber(currentForecast, 2)}`);
 
-export function increaseBudget(ns: NS, fraction: string | number | boolean): boolean {
-    if (Number.isNaN(fraction)) {
-        ns.tprint("ERROR: increaseBudget requires a fraction argument!");
-        return false;
-    }
-    if (typeof fraction === "string") {
-        fraction = Number(fraction);
-    } else if (typeof fraction === "boolean") {
-        ns.tprint("ERROR: increaseBudget requires a fraction argument!");
-        return false;
-    }
-    if (fraction > 1 || fraction <= 0) {
-        ns.tprintf("Invalid fraction: %d", fraction);
-        return false;
-    }
-    const totalMoney = ns.getServerMoneyAvailable("home");
-    const moneyToIncrease = totalMoney * fraction;
-    totalBudget += moneyToIncrease;
-    return true;
+    ns.print(`  Total Value: ${ns.formatNumber(currentTotalValue, 3, 1000, true)}\t|\tProfit: ${ns.formatNumber(currentProfit)} (${ns.formatPercent(currentProfitPercentage, 2)})`);
 }
 
 export function randomizedStockOrder(ns: NS): string[] {
@@ -59,9 +47,21 @@ export function randomizedStockOrder(ns: NS): string[] {
     return randomizedStocks;
 }
 
+function getBudget(ns: NS, liquidity = 0.10): number {
+    const liquid = ns.getServerMoneyAvailable("home");
+    const stockInfo = aggregateStockInfo(ns);
+    const principalValue = stockInfo.principal;
+    const currentValue = stockInfo.current;
+    const totalPrincipal = liquid + principalValue;
+    const totalCurrent = liquid + currentValue;
+
+    const totalGM = Math.sqrt(totalPrincipal * totalCurrent);
+    return (liquid - liquidity * totalGM);
+}
+
 export async function autoTrader(ns: NS, canBuy = true) {
+    const origCanBuy = canBuy;
     ns.tprint("Starting autoTrader...");
-    totalBudget = (totalBudget == 0) ? ns.getServerMoneyAvailable("home") / 2 : totalBudget;
     if (!ns.stock.hasWSEAccount()) {
         ns.tprint("ERROR: You do not have a WSE account!");
         return;
@@ -76,12 +76,18 @@ export async function autoTrader(ns: NS, canBuy = true) {
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     let portfolioSize = globalStocks.length;
     let cycle = 0;
+    let totalBudget = getBudget(ns);
     for (; ; cycle++) {
         ns.printf("====== AutoTrader cycle %d ======", cycle);
         const moneyAvailable = ns.getServerMoneyAvailable("home");
         const oldBudget = totalBudget;
-        totalBudget = Math.max(moneyAvailable / 4, Math.min(totalBudget, moneyAvailable));
+        totalBudget = getBudget(ns);
         ns.printf("Budget: %d ==> %d (%0.02f%% ==> %0.02f%% of available money)", oldBudget, totalBudget, oldBudget / moneyAvailable * 100, totalBudget / moneyAvailable * 100);
+        if (totalBudget <= 0) {
+            canBuy = false;
+        } else {
+            canBuy = origCanBuy;
+        }
         const budgetPerStock = Math.max(totalBudget, 0) / (1 + (portfolioSize <= 0 ? 1 : portfolioSize));
         const cycleStats = emptyCycleStats();
         const randomOrderStocks = randomizedStockOrder(ns);
@@ -103,8 +109,14 @@ export async function autoTrader(ns: NS, canBuy = true) {
 
             let bought = false;
             let sold = false;
-
-            if (currentForecast >= 0.63) {
+            const oldCanBuy = canBuy;
+            if (currentForecast >= WaterMarks.forceBuy) {
+                canBuy = true;
+            }
+            if (currentForecast >= WaterMarks.overAllocate) {
+                remainingSymbolPurchases += 1;
+            }
+            if (currentForecast >= WaterMarks.purchaseAbove) {
                 if (remainingSymbolPurchases <= 0) {
                     ns.printf("INFO: Not buying %s because we have no more purchases left this cycle", stock);
                 } else if (currentOwned >= ns.stock.getMaxShares(stock)) {
@@ -112,7 +124,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                 } else if (!canBuy) {
                     ns.printf("INFO: AutoTrader has buying disabled, otherwise would buy %s", stock);
                 } else {
-                    const effectiveSymbols = Math.min(remainingSymbolPurchases, (currentForecast >= 0.8) ? 3 : (currentForecast >= 0.7) ? 2 : 1);
+                    const effectiveSymbols = Math.min(remainingSymbolPurchases, (currentForecast >= WaterMarks.tripleSymbol) ? 3 : (currentForecast >= WaterMarks.doubleSymbol) ? 2 : 1);
                     const idealValue = budgetPerStock * effectiveSymbols;
                     const realValue = Math.min(idealValue, moneyAvailable);
                     const maxBuy = ns.stock.getMaxShares(stock) - currentOwned;
@@ -127,24 +139,18 @@ export async function autoTrader(ns: NS, canBuy = true) {
                                 bought = true;
                                 remainingSymbolPurchases -= effectiveSymbols;
                                 cycleStats.purchased.push(stock);
-                                totalBudget -= buyPrice * amountToBuy;
-                                if (totalBudget < 0) {
-                                    ns.toast("WARNING: Current stock budget is negative. This happens when a stock is bought at high value due to favorable forecast.", "warning", 5000);
-                                    ns.print("INFO: New stocks will not be bought until budget is manually funded, or a profitable stock is sold.");
-                                }
                             }
                         }
                     } else {
                         ns.printf("INFO: Stock %s is forecast to increase in value (%0.02f), but autotrader does not have enough budget to purchase stocks.", stock, currentForecast);
                     }
                 }
-            } else if (currentForecast <= 0.55) {
+            } else if (currentForecast <= WaterMarks.sellBelow) {
                 if (currentOwned > 0) {
                     if (netProfitPercentage >= 0) {
                         const sellPrice = ns.stock.sellStock(stock, currentOwned);
                         ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
                         ns.toast(`Made ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatPercent(netProfitPercentage)}) on ${stock} sale`, "success", 5000);
-                        totalBudget += sellPrice * currentOwned;
                         cycleStats.sold.push(stock);
                         sold = true;
                     } else {
@@ -165,6 +171,7 @@ export async function autoTrader(ns: NS, canBuy = true) {
                     cycleStats.ignored.push(stock);
                 }
             }
+            canBuy = oldCanBuy;
         }
 
         ns.printf("====== AutoTrader cycle %d stats ======", cycle);

@@ -4,10 +4,18 @@ import { NodeInfo } from "global";
 import { canHack } from "./helper";
 import { rip } from "./rip";
 
+type Target = { server: string, stock: boolean };
+
+const MaxNonStockTargets = 5;
+
 const homeReserve = 64;
-const batchSize = 10_000;
+const batchSize = 100_000;
 
 const defaultHGW = { hack: 1, grow: 4, weaken: 2 };
+
+export type SymbolDict = { [key: string]: string | undefined };
+
+export const serverSymbols: SymbolDict = {};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type HGWOutcome = {
@@ -33,8 +41,8 @@ function weakenFraction(hgw: HGWRatio): number {
 
 type HGWRatio = { hack: number, grow: number, weaken: number }
 
-async function stagger(ns: NS) {
-    await ns.sleep(100);
+async function stagger(ns: NS, threads: number) {
+    await ns.sleep(1000 * threads / batchSize);
     return;
 }
 
@@ -274,7 +282,53 @@ async function getHGW(ns: NS, server: string, pool: ThreadPool): Promise<HGWRati
     return balanceHGW(ns, server, pool, hgw);
 }
 
-type ThreadInfo = { maxThreads: number, hackThreads: number, growThreads: number, weakenThreads: number };
+
+
+class ProcessInfo {
+    protected pidThreads: { [pid: number]: number };
+
+    constructor() {
+        this.pidThreads = {};
+    }
+
+    public addProcess(pid: number, threads: number) {
+        if (pid in this.pidThreads) {
+            throw new Error("Duplicate PID detected: " + pid);
+        }
+        this.pidThreads[pid] = threads;
+    }
+
+    public getThreadCount(pid: number): number {
+        return this.pidThreads[pid] ?? 0;
+    }
+
+    /**
+     * Removes a process identifier and returns how many threads it had, if any.
+     * @param pid
+     */
+    public pruneProcess(pid: number): number {
+        const ret = this.pidThreads[pid] ?? 0;
+        delete this.pidThreads[pid];
+        return ret;
+    }
+
+    get pids(): number[] {
+        const ret = [];
+        for (const key in this.pidThreads) {
+            ret.push(Number(key));
+        }
+        return ret;
+    }
+}
+
+type ThreadInfo = ThreadSummary & { hacks: ProcessInfo, grows: ProcessInfo, weakens: ProcessInfo };
+
+type ThreadSummary = {
+    maxThreads: number,
+    hackThreads: number,
+    growThreads: number,
+    weakenThreads: number,
+};
 
 export class ThreadPool {
     public isInitialized = false;
@@ -334,30 +388,39 @@ export class ThreadPool {
                     ns.tprint(`INFO: ${server.name} max RAM increased to ${ns.formatRam(maxRam)}`);
                 }
                 const maxThreads = Math.floor(maxRam / this.threadRam);
-                this.updateServerThreads(server.name, maxThreads);
+                this.updateServerThreads(ns, server.name, maxThreads);
             }
         }
     }
 
-    public addHackThreads(server: string, nThreads: number): void {
+    public addHackThreads(server: string, nThreads: number, pid?: number): void {
         if (!Object.keys(this.pool).includes(server)) {
             throw new Error(`Server ${server} not in pool`);
         }
         this.pool[server].hackThreads += nThreads;
+        if (pid) {
+            this.pool[server].grows.addProcess(pid, nThreads);
+        }
     }
 
-    public addGrowThreads(server: string, nThreads: number): void {
+    public addGrowThreads(server: string, nThreads: number, pid?: number): void {
         if (!(Object.keys(this.pool).includes(server))) {
             throw new Error(`Server ${server} not in pool`);
         }
         this.pool[server].growThreads += nThreads;
+        if (pid) {
+            this.pool[server].grows.addProcess(pid, nThreads);
+        }
     }
 
-    public addWeakenThreads(server: string, nThreads: number): void {
+    public addWeakenThreads(server: string, nThreads: number, pid?: number): void {
         if (!Object.keys(this.pool).includes(server)) {
             throw new Error(`Server ${server} not in pool`);
         }
         this.pool[server].weakenThreads += nThreads;
+        if (pid) {
+            this.pool[server].weakens.addProcess(pid, nThreads);
+        }
     }
 
     getInfo(server: string) {
@@ -373,14 +436,35 @@ export class ThreadPool {
             hackThreads: this.pool[server]?.hackThreads ?? 0,
             growThreads: this.pool[server]?.growThreads ?? 0,
             weakenThreads: this.pool[server]?.weakenThreads ?? 0,
+            hacks: new ProcessInfo(),
+            weakens: new ProcessInfo(),
+            grows: new ProcessInfo(),
         };
     }
 
-    public updateServerThreads(server: string, newThreads: number): void {
+    public updateServerThreads(ns: NS, server: string, newThreads: number): void {
         if (!(Object.keys(this.pool).includes(server))) {
             throw new Error(`Server ${server} not in pool`);
         }
         this.pool[server].maxThreads = newThreads;
+        const hackPids = this.pool[server].hacks.pids;
+        const growPids = this.pool[server].grows.pids;
+        const weakenPids = this.pool[server].weakens.pids;
+        for (const pid of hackPids) {
+            if (!ns.isRunning(pid)) {
+                this.pool[server].hackThreads -= this.pool[server].hacks.pruneProcess(pid);
+            }
+        }
+        for (const pid of growPids) {
+            if (!ns.isRunning(pid)) {
+                this.pool[server].growThreads -= this.pool[server].grows.pruneProcess(pid);
+            }
+        }
+        for (const pid of weakenPids) {
+            if (!ns.isRunning(pid)) {
+                this.pool[server].weakenThreads -= this.pool[server].weakens.pruneProcess(pid);
+            }
+        }
     }
 
     public size(): number {
@@ -391,7 +475,7 @@ export class ThreadPool {
         return Object.values(this.pool).reduce((acc, server) => acc + server.maxThreads - server.hackThreads - server.growThreads - server.weakenThreads, 0);
     }
 
-    public headCount(): ThreadInfo {
+    public headCount(): ThreadSummary {
         return Object.values(this.pool).reduce((acc, server) => {
             acc.maxThreads += server.maxThreads;
             acc.hackThreads += server.hackThreads;
@@ -404,6 +488,23 @@ export class ThreadPool {
 
 
 export async function main(ns: NS): Promise<void> {
+    ns.disableLog("disableLog");
+    ns.disableLog("killall");
+    ns.disableLog("scriptKill");
+    ns.disableLog("getServerUsedRam");
+    ns.disableLog("exec");
+    ns.disableLog("scp");
+    ns.disableLog("getServerMaxRam");
+    ns.disableLog("getServerMoneyAvailable");
+    ns.disableLog("getServerMaxMoney");
+    ns.disableLog("getServerMinSecurityLevel");
+    ns.disableLog("getServerSecurityLevel");
+    ns.disableLog("getServerRequiredHackingLevel");
+    ns.disableLog("getServerNumPortsRequired");
+    ns.disableLog("getHackingLevel");
+    ns.disableLog("scan");
+    ns.disableLog("sleep");
+
     let graph = getGraph(ns);
     ns.scriptKill("hack.js", "home");
     ns.scriptKill("grow.js", "home");
@@ -419,27 +520,34 @@ export async function main(ns: NS): Promise<void> {
             ns.killall(serverInfo.name, true);
         }
     }
-    ns.disableLog("getServerUsedRam");
-    ns.disableLog("getServerMaxRam");
-    ns.disableLog("getServerMoneyAvailable");
-    ns.disableLog("getServerMaxMoney");
-    ns.disableLog("getServerMinSecurityLevel");
-    ns.disableLog("getServerSecurityLevel");
-    ns.disableLog("sleep");
 
-    function setTarget(): string {
-        const highestProfit = rip(ns);
-        for (const candidate of highestProfit) {
-            if (canHack(ns, candidate[0])) {
-                return candidate[0];
-            } else {
-                continue;
+    function getTargets(): Target[] {
+        const targets = [];
+        let nNonStock = 0;
+        const profitDescending = rip(ns);
+        for (const candidate of profitDescending) {
+            const asTarget: Target = { server: candidate[0], stock: shouldStock(ns, candidate[0]) };
+            if (canHack(ns, asTarget.server)) {
+                if (asTarget.stock || nNonStock < MaxNonStockTargets) {
+                    targets.push(asTarget);
+                    if (!asTarget.stock) nNonStock++;
+                }
             }
         }
-        return "n00dles";
+        return targets;
+    }
+    let targets;
+    const cmdLineTarget = ns.args[0];
+    if (typeof cmdLineTarget === "string") {
+        targets = [{ server: cmdLineTarget, stock: shouldStock(ns, cmdLineTarget) }]
+    } else {
+        targets = getTargets();
     }
 
-    const target = (ns.args[0] as string ?? setTarget());
+    const targetObj = pickTarget(targets);
+    const target = targetObj.server;
+    const stock = targetObj.stock;
+
     ns.write("target.txt", target, "w");
     ns.write("dispatch-pid.txt", ns.getRunningScript()?.pid.toString() ?? "0", "w");
     ns.tail();
@@ -457,9 +565,13 @@ export async function main(ns: NS): Promise<void> {
         const available = headCount.maxThreads - (headCount.hackThreads + headCount.growThreads + headCount.weakenThreads);
         ns.print(`Available: ${available}`);
 
-        let newWeaken = Math.ceil(available * weakenFraction(hgw));
-        let newGrow = Math.floor(available * growFraction(hgw));
-        let newHack = available - newWeaken - newGrow;
+        const idealTotalWeaken = Math.ceil(headCount.maxThreads * weakenFraction(hgw));
+        const idealTotalGrow = Math.floor(headCount.maxThreads * growFraction(hgw));
+        const idealTotalHack = headCount.maxThreads - idealTotalWeaken - idealTotalGrow;
+
+        let newWeaken = Math.max(0, idealTotalWeaken - headCount.weakenThreads);
+        let newGrow = Math.max(0, idealTotalGrow - headCount.growThreads);
+        let newHack = Math.max(0, idealTotalHack - headCount.hackThreads);
 
         if (newHack + newGrow + newWeaken > 0) {
             ns.print(`New threads: ${newHack} hack, ${newGrow} grow, ${newWeaken} weaken`);
@@ -494,9 +606,10 @@ export async function main(ns: NS): Promise<void> {
                                     return;
                                 }
                             }
-                            if (ns.exec("weaken.js", server, { threads }, target) !== 0) {
+                            const pid = ns.exec("weaken.js", server, { threads }, target);
+                            if (pid !== 0) {
                                 spawnedThreads += threads;
-                                pool.addWeakenThreads(server, threads);
+                                pool.addWeakenThreads(server, threads, pid);
                                 newWeaken -= threads;
                                 remainingThreads -= threads;
                             }
@@ -520,9 +633,10 @@ export async function main(ns: NS): Promise<void> {
                                     return;
                                 }
                             }
-                            if (ns.exec("grow.js", server, { threads }, target) !== 0) {
+                            const pid = ns.exec("grow.js", server, { threads }, target, shouldStock(ns, target));
+                            if (pid !== 0) {
                                 spawnedThreads += threads;
-                                pool.addGrowThreads(server, threads);
+                                pool.addGrowThreads(server, threads, pid);
                                 newGrow -= threads;
                                 remainingThreads -= threads;
                             }
@@ -541,9 +655,10 @@ export async function main(ns: NS): Promise<void> {
                                     ns.print(`Failed to scp hack.js to ${server}`);
                                 }
                             }
-                            if (ns.exec("hack.js", server, { threads }, target) !== 0) {
+                            const pid = ns.exec("hack.js", server, { threads }, target);
+                            if (pid !== 0) {
                                 spawnedThreads += threads;
-                                pool.addHackThreads(server, threads);
+                                pool.addHackThreads(server, threads, pid);
                                 newHack -= threads;
                                 remainingThreads -= threads;
                             }
@@ -552,9 +667,9 @@ export async function main(ns: NS): Promise<void> {
                     if (spawnedThreads == 0) {
                         continue servers;
                     }
-                    await stagger(ns);
+                    ns.print(`Spawned a total of ${spawnedThreads} threads on server ${server} (${batchHack}, ${batchGrow}, ${batchWeaken} HGW)`);
+                    await stagger(ns, spawnedThreads);
                 }
-                await stagger(ns);
             }
         }
 
@@ -571,4 +686,41 @@ export async function main(ns: NS): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): string[] {
     return [...data.servers]
+}
+
+function serverToSymbol(ns: NS, server: string): string | undefined {
+    if (typeof serverSymbols[server] === "string") {
+        return serverSymbols[server];
+    }
+    const serverInfo = ns.getServer(server);
+    const orgName = serverInfo.organizationName;
+    if (typeof orgName === "string" && orgName !== "") {
+        for (const sym of ns.stock.getSymbols()) {
+            if (ns.stock.getOrganization(sym) == orgName) {
+                serverSymbols[server] = sym;
+                return sym;
+            }
+        }
+    }
+    return undefined;
+}
+
+function shouldStock(ns: NS, server: string): boolean {
+    if (!ns.stock.hasTIXAPIAccess()) {
+        return false;
+    }
+    const sym = serverToSymbol(ns, server);
+    const stock = (sym !== undefined && ns.stock.getPosition(sym)[0] > 0);
+    return stock;
+}
+
+function pickTarget(targets: Target[]): Target {
+    if (targets.length === 0) {
+        return { server: "n00dles", stock: false };
+    }
+    const stockTargets = targets.filter(t => t.stock);
+    if (stockTargets.length > 0) {
+        return stockTargets[0];
+    }
+    return targets[0];
 }

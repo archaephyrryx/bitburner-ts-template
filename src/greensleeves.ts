@@ -1,4 +1,19 @@
-import { NS, SleevePerson, SleeveTask } from "@ns";
+import { NS, SleevePerson, SleeveTask, SleeveFactionTask, SleeveCompanyTask, CompanyName } from "@ns";
+
+const factionWork = (factionName: string, factionWorkType = "field") => ({ type: "FACTION", factionWorkType, factionName })
+
+const MegacorpNames: `${CompanyName}`[] = [
+    "ECorp",
+    "MegaCorp",
+    "Bachman & Associates",
+    "Blade Industries",
+    "NWO",
+    "Clarke Incorporated",
+    "OmniTek Incorporated",
+    "Four Sigma",
+    "KuaiGong International",
+    "Fulcrum Technologies",
+];
 
 enum CrimeType {
     shoplift = "Shoplift",
