@@ -27,10 +27,12 @@ export async function main(ns: NS) {
             // Add script exp gain rate per second
             headers.push("ScrExp");
             values.push(`${ns.formatNumber(ns.getTotalScriptExpGain())}/sec`);
-            const investmentInfo = aggregateStockInfo(ns);
-            if (investmentInfo.principal > 0) {
-                headers.push("ROI")
-                values.push(`$${ns.formatNumber(investmentInfo.principal)} => $${ns.formatNumber(investmentInfo.current)}`);
+            if (ns.stock.hasTIXAPIAccess()) {
+                const investmentInfo = aggregateStockInfo(ns);
+                if (investmentInfo.principal > 0) {
+                    headers.push("ROI")
+                    values.push(`$${ns.formatNumber(investmentInfo.principal)} => $${ns.formatNumber(investmentInfo.current)}`);
+                }
             }
             // TODO: Add more neat stuff
 
