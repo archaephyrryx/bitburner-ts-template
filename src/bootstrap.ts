@@ -1,6 +1,19 @@
 import { NS } from "@ns";
 import { getGraph } from 'census';
 
+export enum SelfObjectives {
+    GetScripts = "Get Scripts",
+    JoinCoreFactions = "Join Core Factions",
+    ObtainTIXAPI = "Obtain TIX API",
+    AugmentHome = "Augment Home",
+    GrindMegacorp = "Grind Megacorp Reputation",
+}
+
+export enum SleeveObjectives {
+    ZeroShock = "Zero Shock",
+    PurchaseAugments = "Purchase Augments",
+}
+
 export async function autoCrack(ns: NS, server: string, portsHint?: number): Promise<void> {
     if (!(server === "home" || ns.hasRootAccess(server))) {
         ns.print(`Cracking ${server}...`)

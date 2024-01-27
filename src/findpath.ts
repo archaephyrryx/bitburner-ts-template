@@ -23,6 +23,12 @@ export function shortCircuit(ns: NS, path: string[]): string[] {
     return path;
 }
 
+export function getRoute(ns: NS, dest: string): string[] {
+    const route = search(ns, dest);
+    const newRoute = shortCircuit(ns, route);
+    return newRoute;
+}
+
 export async function main(ns: NS): Promise<void> {
     const [target, ...command] = ns.args as string[];
     if (!ns.serverExists(target)) {
