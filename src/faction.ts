@@ -20,7 +20,7 @@ export async function joinFaction(ns: NS, factionName: string): Promise<boolean>
 
     const tasks: Genie[] = [];
 
-    for (const req of reqs) {
+    function taskify(req: PlayerRequirement) {
         switch (req.type) {
             case "money":
                 tasks.push(moneyWish(req.money));
@@ -33,6 +33,13 @@ export async function joinFaction(ns: NS, factionName: string): Promise<boolean>
             case "city":
                 tasks.push(cityWish(req.city));
                 break;
+            case "someCondition":
+                return taskify(req.conditions[0]);
+            case "everyCondition":
+                for (const subreq of req.conditions) {
+                    if (!taskify(subreq)) return false;
+                }
+                break;
             default:
                 // eslint-disable-next-line no-case-declarations
                 const msg = `No logic for faction '${factionName}' join-condition: ${JSON.stringify(req)}`;
@@ -40,7 +47,15 @@ export async function joinFaction(ns: NS, factionName: string): Promise<boolean>
                 ns.tprint(`ERROR: ${msg}`);
                 return false;
         }
+        return true;
     }
+
+    for (const req of reqs) {
+        if (!taskify(req)) {
+            return false;
+        }
+    }
+
     for (const genie of tasks) {
         if (!await genie(ns)) {
             return false;

@@ -79,7 +79,7 @@ async function acquirePorts(ns: NS, serv: string): Promise<void> {
     }
 }
 
-export async function executeBackdoor(ns: NS, server: string): Promise<void> {
+export async function executeBackdoor(ns: NS, server: string, join = true): Promise<void> {
     if (isBackdoored(ns, server)) {
         ns.toast(`Server ${server} has already been backdoored...`, "info", 3000);
         return;
@@ -92,6 +92,11 @@ export async function executeBackdoor(ns: NS, server: string): Promise<void> {
     await ns.singularity.installBackdoor();
     ns.singularity.connect("home");
     ns.toast(`Sucessfully installed backdoor on server ${server}`, "success", 2000);
+    if (join) {
+        for (const faction in ns.singularity.checkFactionInvitations) {
+            ns.singularity.joinFaction(faction);
+        }
+    }
 }
 
 export async function main(ns: NS): Promise<void> {

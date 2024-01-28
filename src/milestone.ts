@@ -10,8 +10,6 @@ export const Milestones: ((ns: NS) => Promise<void>)[] = [
         if (augmentName in ns.singularity.getOwnedAugmentations()) {
             return;
         }
-        const price = ns.singularity.getAugmentationPrice(augmentName);
-        const reqRep = ns.singularity.getAugmentationRepReq(augmentName);
         if (await joinFaction(ns, factionName)) {
             return;
         } else {
