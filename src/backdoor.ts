@@ -20,21 +20,6 @@ function isBackdoored(ns: NS, serv: string): boolean {
     return ns.getServer(serv).backdoorInstalled ?? false;
 }
 
-async function missingBackdoors(ns: NS): Promise<string[]> {
-    const ret = [];
-    const nodes = getGraph(ns, true);
-    for (const node of nodes) {
-        const name = node.name;
-        if (name === "home" || name.startsWith("pserv")) {
-            continue;
-        }
-        if (!isBackdoored(ns, name)) {
-            ret.push(name);
-        }
-    }
-    return ret;
-}
-
 type PortCount = 0 | 1 | 2 | 3 | 4 | 5;
 
 export function assertPortCount(n: number): asserts n is PortCount {
