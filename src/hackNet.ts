@@ -85,10 +85,10 @@ export async function boostNodes(ns: NS) {
     await boostLevel(ns, 80);
     await boostRam(ns, 4);
     await boostCores(ns, 2);
-    await boostRam(ns, 8);
-    await boostCores(ns, 4);
-    await boostRam(ns, 16);
-    await boostCores(ns, 8);
+    // await boostRam(ns, 8);
+    // await boostCores(ns, 4);
+    // await boostRam(ns, 16);
+    // await boostCores(ns, 8);
 }
 
 async function maximize(ns: NS, amount: number) {
