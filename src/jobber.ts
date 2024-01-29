@@ -20,6 +20,7 @@ const MegacorpNames: `${CompanyName}`[] = [
 
 export async function main(ns: NS) {
     ns.tail();
+    ns.disableLog('singularity.applyToCompany');
     let nJobs = 0;
     Working = {};
     const workers: Who[] = [];
