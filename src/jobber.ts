@@ -19,6 +19,7 @@ const MegacorpNames: `${CompanyName}`[] = [
 
 
 export async function main(ns: NS) {
+    ns.tail();
     let nJobs = 0;
     Working = {};
     const workers: Who[] = [];
