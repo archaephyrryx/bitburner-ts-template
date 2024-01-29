@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 import { affordableCopies, canAfford } from "./money_helper";
 import { BUDGET, makePurchase } from "./budget";
 
@@ -56,20 +56,17 @@ function listAvail(ns: NS, print = true): AugInfo[] {
         }
     }
 
-    const temp1 = [];
-    const rest1: AugInfo[] = [];
+    const temp = [];
     for (const aug of delayed) {
         if (aug.prereqs.every((req) => alreadyHave.includes(req))) {
-            temp1.push(aug);
-        } else {
-            rest1.push(aug);
+            temp.push(aug);
         }
     }
 
     if (print) {
         ns.tprint(`=== Available Augmentations (Prerequisites Installed) ===`);
         const notified = [];
-        for (const augInfo of temp1) {
+        for (const augInfo of temp) {
             if (notified.findIndex((n) => n == augInfo.augName) == -1) {
                 const [now, afterSale] = canAfford(ns, augInfo.atPrice);
                 if (now) {
@@ -85,7 +82,7 @@ function listAvail(ns: NS, print = true): AugInfo[] {
 
     }
 
-    canGet.push(...temp1);
+    canGet.push(...temp);
     // any further requirements cannot be met without forcing a sub-par ordering
     return canGet;
 }
@@ -191,4 +188,9 @@ async function buyAvailSleeves(ns: NS) {
         }
     }
     return;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    return ["list-avail", "buy-avail", "list-avail-sleeves", "buy-avail-sleeves"];
 }

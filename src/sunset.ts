@@ -19,6 +19,8 @@ export async function main(ns: NS) {
     // begin sunsetting
     ns.scriptKill("market.js", "home");
     ns.exec("market.js", "home", {}, "autosell", "--force");
+    await ns.sleep(5000);
+    ns.exec("augs.js", "home", {}, "buy-avail");
     while (ns.singularity.upgradeHomeCores()) {
         await ns.sleep(100);
     }
@@ -28,5 +30,8 @@ export async function main(ns: NS) {
     if (ns.singularity.exportGameBonus()) {
         ns.singularity.exportGame();
     }
+
+    ns.toast("WILL SUNSET IN 1 MINUTE", "warning", 60_000);
+    await ns.sleep(60_000);
     ns.singularity.installAugmentations("bootstrap.js");
 }
