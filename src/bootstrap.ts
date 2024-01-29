@@ -69,6 +69,7 @@ export async function main(ns: NS): Promise<void> {
     ns.exec("server.js", "home", {}, "init");
     ns.exec("greensleeves.js", "home");
     ns.exec("backdoor.js", "home", {}, "all");
+    ns.exec("jobber.js", "home");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);
