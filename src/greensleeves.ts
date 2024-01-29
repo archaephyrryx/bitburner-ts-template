@@ -77,7 +77,11 @@ export async function main(ns: NS) {
         const crime: `${CrimeType}` = _crime as `${CrimeType}`;
         const crimeInfo = crimeStats[crime];
         if (typeof crimeInfo !== 'undefined') {
-            ns.tprint(`${_crime}: ${crimeInfo.workers} sleeves with ${crimeInfo.timesCompleted} attempts at ${ns.formatNumber(crimeInfo.timesCompleted / crimeInfo.sleeveCycles, 2)} tasks/cycle`)
+            if (crimeInfo.sleeveCycles == 0) {
+                ns.tprint(`${_crime}: ${crimeInfo.workers} sleeves with ${crimeInfo.timesCompleted} attempts`)
+            } else {
+                ns.tprint(`${_crime}: ${crimeInfo.workers} sleeves with ${crimeInfo.timesCompleted} attempts at ${ns.formatNumber(crimeInfo.timesCompleted / crimeInfo.sleeveCycles, 2)} tasks/cycle`)
+            }
         }
     }
 }

@@ -68,8 +68,7 @@ export async function main(ns: NS): Promise<void> {
     ns.exec("hackNet.js", "home", {}, "init");
     ns.exec("server.js", "home", {}, "init");
     ns.exec("greensleeves.js", "home");
-
-
+    ns.exec("backdoor.js", "home", {}, "all");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);
