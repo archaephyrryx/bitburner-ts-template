@@ -20,7 +20,7 @@ export async function joinFaction(ns: NS, factionName: string): Promise<boolean>
 
     const tasks: Genie[] = [];
 
-    function taskify(req: PlayerRequirement) {
+    function taskify(req: PlayerRequirement): boolean {
         switch (req.type) {
             case "money":
                 tasks.push(moneyWish(req.money));

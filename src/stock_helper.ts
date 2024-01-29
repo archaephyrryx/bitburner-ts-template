@@ -28,5 +28,9 @@ export function addStockInfo(x: StockInfo, y: StockInfo): StockInfo {
 }
 
 export function aggregateStockInfo(ns: NS): StockInfo {
-    return getSymbols(ns).reduce((acc, sym) => addStockInfo(acc, stockValue(ns, sym)), { principal: 0, current: 0 });
+    if (ns.stock.hasTIXAPIAccess()) {
+        return getSymbols(ns).reduce((acc, sym) => addStockInfo(acc, stockValue(ns, sym)), { principal: 0, current: 0 });
+    } else {
+        return { principal: 0, current: 0 };
+    }
 }
