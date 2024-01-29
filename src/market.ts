@@ -1,5 +1,5 @@
 import { NS } from '@ns';
-import { stockValue, addStockInfo, StockInfo, Symbols, aggregateStockInfo } from './stock_helper';
+import { aggregateStockInfo } from './stock_helper';
 
 const expectedCommission = 100000;
 
@@ -59,7 +59,7 @@ function getBudget(ns: NS, liquidity = 0.10): number {
     return (liquid - liquidity * totalGM);
 }
 
-export async function autoTrader(ns: NS, canBuy = true) {
+export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
     const origCanBuy = canBuy;
     ns.tprint("Starting autoTrader...");
     if (!ns.stock.hasWSEAccount()) {
@@ -77,6 +77,35 @@ export async function autoTrader(ns: NS, canBuy = true) {
     let portfolioSize = globalStocks.length;
     let cycle = 0;
     let totalBudget = getBudget(ns);
+    if (forceSell) {
+        const randomOrderStocks = randomizedStockOrder(ns);
+        for (const stock of randomOrderStocks) {
+            const currentBidPrice = ns.stock.getBidPrice(stock);
+
+            const currentPosition = ns.stock.getPosition(stock);
+            const currentOwned = currentPosition[0];
+            const currentAveragePrice = currentPosition[1];
+
+            const principal = currentOwned * currentAveragePrice;
+            const grossYield = currentOwned * currentBidPrice;
+            const netYield = grossYield - expectedCommission;
+            const netProfit = netYield - principal;
+            const netProfitPercentage = netProfit / principal;
+
+            if (currentOwned > 0) {
+                if (netProfitPercentage >= 0) {
+                    const sellPrice = ns.stock.sellStock(stock, currentOwned);
+                    ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
+                    ns.toast(`Made ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatPercent(netProfitPercentage)}) on ${stock} sale`, "success", 5000);
+                } else {
+                    const sellPrice = ns.stock.sellStock(stock, currentOwned);
+                    ns.printf("Sold %s of %s at $%s", ns.formatNumber(currentOwned, 3, 1000, true), stock, ns.formatNumber(sellPrice, 4, 1000, false));
+                    ns.toast(`Lost ${ns.formatNumber(netProfit, 4, 1000, true)} (${ns.formatPercent(netProfitPercentage)}) on ${stock} sale`, "info", 5000);
+                }
+            }
+        }
+        return;
+    }
     for (; ; cycle++) {
         ns.printf("====== AutoTrader cycle %d ======", cycle);
         const moneyAvailable = ns.getServerMoneyAvailable("home");
@@ -205,7 +234,7 @@ export async function main(ns: NS): Promise<void> {
             return;
         case "autosell":
             ns.tail();
-            await autoTrader(ns, false);
+            await autoTrader(ns, false, (ns.args[1] == "--force"));
             return;
         default:
             ns.tprint("ERROR: Invalid argument!");
