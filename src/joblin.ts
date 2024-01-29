@@ -30,8 +30,7 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
                 }
             }
         }
-        ns.singularity.workForCompany(where as CompanyName);
-        Working[where as CompanyName] = true;
+        Working[where as CompanyName] = ns.singularity.workForCompany(where as CompanyName);
     }
     return true;
 }
