@@ -52,6 +52,18 @@ export async function autoCrack(ns: NS, server: string, portsHint?: number): Pro
     }
 }
 
+/** @param ns {NS}
+ * @param scriptName {string}
+ * @param args {string[]}
+ */
+export function runOnce(ns: NS, scriptName: string, ...args: string[]) {
+    if (ns.isRunning(scriptName, "home", ...args)) {
+        return;
+    }
+    ns.exec(scriptName, "home", {}, ...args)
+}
+
+
 export async function main(ns: NS): Promise<void> {
     // Copy our scripts onto each server that requires 0 ports
     // to gain root access. Then use nuke() to gain admin access and
@@ -59,17 +71,19 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
 
-    ns.exec("dispatch.js", "home");
-    ns.exec("monitor.js", "home");
+    runOnce(ns, "dispatch.js");
+    runOnce(ns, "monitor.js");
     if (ns.stock.has4SDataTIXAPI()) {
-        ns.exec("market.js", "home", {}, "autotrade");
+        runOnce(ns, "market.js", "autotrade");
     }
-    ns.exec("custom-stats.js", "home");
-    ns.exec("hackNet.js", "home", {}, "init");
-    ns.exec("server.js", "home", {}, "init");
-    ns.exec("greensleeves.js", "home");
-    ns.exec("backdoor.js", "home", {}, "all");
-    ns.exec("jobber.js", "home");
+    runOnce(ns, "custom-stats.js");
+    runOnce(ns, "hackNet.js", "init");
+    runOnce(ns, "server.js", "init");
+    runOnce(ns, "greensleeves.js");
+    runOnce(ns, "backdoor.js", "all");
+    runOnce(ns, "jobber.js");
+    runOnce(ns, "budget.js");
+    runOnce(ns, "factoid.js", "--verbose");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);

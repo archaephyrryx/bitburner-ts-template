@@ -1,5 +1,5 @@
-import { NS, CompanyName } from "@ns";
-import { allocateWorker } from "./greensleeves";
+import { NS, CompanyName, Player } from "@ns";
+import { allocateWorker } from "./worker";
 
 export type Who = "self" | number;
 export let Working: { [k in CompanyName]?: boolean };
@@ -17,18 +17,26 @@ const MegacorpNames: `${CompanyName}`[] = [
     "Fulcrum Technologies",
 ];
 
+function corpFaction(corp: string): string {
+    if (corp === "Fulcrum Technologies") {
+        return "Fulcrum Secret Technologies";
+    } else if (MegacorpNames.includes(corp as `${CompanyName}`)) {
+        return corp;
+    }
+    throw new Error(`Corporation ${corp} not recognized or has no faction.`);
+}
 
 export async function main(ns: NS) {
     ns.tail();
     ns.disableLog('singularity.applyToCompany');
-    let nJobs = 0;
     Working = {};
     const workers: Who[] = [];
+
+    const plyr: Player = ns.getPlayer();
 
     for (const corp of MegacorpNames) {
         const success = ns.singularity.applyToCompany(corp, "Software");
         if (success) {
-            nJobs += 1;
             const [who, done] = allocateWorker(ns, corp as CompanyName);
             if (done) {
                 Working[corp as CompanyName] = true;
@@ -60,6 +68,9 @@ export async function main(ns: NS) {
         }
 
         for (const corp of missingWorkers) {
+            if (plyr.factions.includes(corpFaction(corp))) {
+                continue;
+            }
             const [who, done] = allocateWorker(ns, corp as CompanyName);
             if (done) {
                 Working[corp as CompanyName] = true;

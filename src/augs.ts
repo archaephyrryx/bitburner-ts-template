@@ -29,7 +29,7 @@ function listAvail(ns: NS, print = true): AugInfo[] {
                 }
             } else {
                 if (ns.singularity.getFactionRep(fromFaction) >= reqRep) {
-                    canGet.push({ augName, fromFaction, atPrice: ns.singularity.getAugmentationBasePrice(augName), prereqs });
+                    canGet.push({ augName, fromFaction, atPrice: ns.singularity.getAugmentationPrice(augName), prereqs });
                     if (!canGetRaw.includes(augName)) {
                         canGetRaw.push(augName);
                     }

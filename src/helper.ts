@@ -143,3 +143,8 @@ export function canHack(ns: NS, server: string, handicap = 0.5): boolean {
     }
     return true;
 }
+
+export function printWaitingMoney(ns: NS, moneyAvailable: number, moneyNeeded: number, verb: string): void {
+    if (moneyAvailable < moneyNeeded)
+        ns.print(`Waiting for money to ${verb}: $${ns.formatNumber(moneyAvailable)}/$${ns.formatNumber(moneyNeeded)} (${ns.formatPercent(moneyAvailable / moneyNeeded)}, Need $${ns.formatNumber(moneyNeeded - moneyAvailable)} more)`);
+}

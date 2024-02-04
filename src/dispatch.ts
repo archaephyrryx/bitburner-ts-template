@@ -11,7 +11,7 @@ const MaxNonStockTargets = 5;
 const homeReserve = 64;
 const batchSize = 100_000;
 
-const defaultHGW = { hack: 1, grow: 4, weaken: 2 };
+const defaultHGW = { hack: 1, grow: 8, weaken: 2 };
 
 export type SymbolDict = { [key: string]: string | undefined };
 
@@ -486,8 +486,26 @@ export class ThreadPool {
     }
 }
 
+function renew(ns: NS): NodeInfo[] {
+    const graph = getGraph(ns);
+    ns.scriptKill("hack.js", "home");
+    ns.scriptKill("grow.js", "home");
+    ns.scriptKill("weaken.js", "home");
+    for (const serverInfo of graph) {
+        if (serverInfo.name === "home") {
+            continue;
+        }
+        if (!ns.serverExists(serverInfo.name)) {
+            continue;
+        }
+        if (ns.hasRootAccess(serverInfo.name)) {
+            ns.killall(serverInfo.name, true);
+        }
+    }
+    return graph;
+}
 
-export async function main(ns: NS): Promise<void> {
+async function hideLogs(ns: NS) {
     ns.disableLog("disableLog");
     ns.disableLog("killall");
     ns.disableLog("scriptKill");
@@ -504,23 +522,9 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("scan");
     ns.disableLog("sleep");
+}
 
-    let graph = getGraph(ns);
-    ns.scriptKill("hack.js", "home");
-    ns.scriptKill("grow.js", "home");
-    ns.scriptKill("weaken.js", "home");
-    for (const serverInfo of graph) {
-        if (serverInfo.name === "home") {
-            continue;
-        }
-        if (!ns.serverExists(serverInfo.name)) {
-            continue;
-        }
-        if (ns.hasRootAccess(serverInfo.name)) {
-            ns.killall(serverInfo.name, true);
-        }
-    }
-
+function decideTarget(ns: NS): [string, boolean] {
     function getTargets(): Target[] {
         const targets = [];
         let nNonStock = 0;
@@ -536,21 +540,26 @@ export async function main(ns: NS): Promise<void> {
         }
         return targets;
     }
+
     let targets;
+    let userpick;
     const cmdLineTarget = ns.args[0];
     if (typeof cmdLineTarget === "string") {
         targets = [{ server: cmdLineTarget, stock: shouldStock(ns, cmdLineTarget) }]
+        userpick = true;
     } else {
         targets = getTargets();
+        userpick = false;
     }
 
     const targetObj = pickTarget(targets);
     const target = targetObj.server;
-    const stock = targetObj.stock;
+    return [target, userpick];
+}
 
+async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], userPicked = false): Promise<string | -1> {
     ns.write("target.txt", target, "w");
-    ns.write("dispatch-pid.txt", ns.getRunningScript()?.pid.toString() ?? "0", "w");
-    ns.tail();
+    ns.write("dispatch-pid.txt", ns.pid.toString() ?? "0", "w");
 
     const minSec = ns.getServerMinSecurityLevel(target);
 
@@ -598,12 +607,12 @@ export async function main(ns: NS): Promise<void> {
                             if (!ns.fileExists("weaken.js", server)) {
                                 if (server === "home") {
                                     ns.tprint("ERROR: Failed to find weaken.js in home");
-                                    return;
+                                    return -1;
                                 }
                                 const res = ns.scp("weaken.js", server, "home");
                                 if (!res) {
                                     ns.tprint(`ERROR: Failed to scp weaken.js to ${server}`);
-                                    return;
+                                    return -1;
                                 }
                             }
                             const pid = ns.exec("weaken.js", server, { threads }, target);
@@ -625,12 +634,12 @@ export async function main(ns: NS): Promise<void> {
                             if (!ns.fileExists("grow.js", server)) {
                                 if (server === "home") {
                                     ns.tprint("ERROR: Failed to find grow.js in home");
-                                    return;
+                                    return -1;
                                 }
                                 const res = ns.scp("grow.js", server, "home");
                                 if (!res) {
                                     ns.tprint(`ERROR: Failed to scp grow.js to ${server}`);
-                                    return;
+                                    return -1;
                                 }
                             }
                             const pid = ns.exec("grow.js", server, { threads }, target, shouldStock(ns, target));
@@ -680,6 +689,32 @@ export async function main(ns: NS): Promise<void> {
         ns.clearLog();
         ns.print(`${target} Snapshot: Security = ${currentSec.toFixed(2)} (Min: ${minSec}), Money = $${ns.formatNumber(currentMoney)}`);
         pool.update(ns, graph);
+        if (!userPicked) {
+            const [nextTarget] = decideTarget(ns);
+            if (nextTarget !== target) {
+                return nextTarget;
+            }
+        }
+    }
+}
+
+
+export async function main(ns: NS): Promise<void> {
+    hideLogs(ns);
+    const graph = renew(ns);
+    const [initTarget, userPicked] = decideTarget(ns);
+    ns.tail();
+
+    let target = initTarget;
+    for (; ;) {
+        const newTarget = await spawnTarget(ns, target, graph, userPicked);
+        if (newTarget === -1) {
+            return;
+        } else if (newTarget !== target) {
+            target = newTarget;
+            renew(ns);
+            continue;
+        }
     }
 }
 

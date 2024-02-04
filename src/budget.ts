@@ -1,8 +1,9 @@
-import { NS } from "@ns";
+import { NS, ScriptArg, AutocompleteData } from "@ns";
+import { arrayEq } from "./util/arraytools";
 
 type Id = number;
 
-type BudgetItem = { id: Id, amount: number };
+type BudgetItem = { readonly id: Id, readonly amount: number, readonly pid: number };
 
 export class BudgetSemaphore {
     private items: BudgetItem[];
@@ -23,14 +24,14 @@ export class BudgetSemaphore {
     }
 
     protected async getLock(ns: NS) {
-        while (this.lock_pid != 0 && this.lock_pid != ns.pid) {
+        while (this.lock_pid != 0 && this.lock_pid != ns.pid && ns.isRunning(this.lock_pid)) {
             await ns.sleep(100);
         }
         this.lock_pid = ns.pid;
     }
 
     protected freeLock(ns: NS) {
-        if (ns.pid == this.lock_pid) {
+        if (ns.pid == this.lock_pid || this.lock_pid == 0 || !ns.isRunning(this.lock_pid)) {
             this.lock_pid = 0;
             return;
         }
@@ -44,7 +45,7 @@ export class BudgetSemaphore {
     public async request(ns: NS, amount: number): Promise<Id> {
         await this.getLock(ns);
         const id = this.next_id++;
-        this.items.push({ id, amount });
+        this.items.push({ id, amount, pid: ns.pid });
         this.freeLock(ns);
         return id;
     }
@@ -75,6 +76,25 @@ export class BudgetSemaphore {
         this.freeLock(ns);
         return removed;
     }
+
+    public async audit(ns: NS): Promise<BudgetItem[]> {
+        await this.getLock(ns);
+        for (const item of this.items) {
+            if (!ns.isRunning(item.pid)) {
+                this.remove(ns, item.id);
+            }
+        }
+        const ret = [...this.items];
+        this.freeLock(ns);
+        return ret;
+    }
+
+    public async clearAll(ns: NS): Promise<void> {
+        await this.getLock(ns);
+        this.items = [];
+        this.freeLock(ns);
+        return;
+    }
 }
 
 export const BUDGET = new BudgetSemaphore();
@@ -97,4 +117,41 @@ export async function makePurchase<T>(ns: NS, id: Id, f: ((ns: NS) => Promise<T>
         }
         await ns.sleep(1000);
     }
+}
+
+function showBudget(ns: NS, items: BudgetItem[]) {
+    ns.print("=== Budget Overview ===");
+    if (items.length > 0) {
+        for (const item of items) {
+            ns.print(`\t> $${ns.formatNumber(item.amount)} for #${item.id}`);
+        }
+    } else {
+        ns.print(`\t> NO ITEMS`)
+    }
+    ns.print("=======================\n");
+}
+
+export async function main(ns: NS) {
+    ns.disableLog('sleep');
+    const flags = ns.flags([
+        ["purge", false]
+    ]);
+    ns.tail();
+    let snapshot: BudgetItem[] = [];
+    if (flags.purge as ScriptArg as boolean === true) {
+        await BUDGET.clearAll(ns);
+    }
+    for (; ;) {
+        const current = await BUDGET.audit(ns);
+        if (!arrayEq(current, snapshot)) {
+            showBudget(ns, current);
+            snapshot = current;
+        }
+        await ns.sleep(1000);
+    }
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    data.flags([['purge', false]]);
+    return [];
 }

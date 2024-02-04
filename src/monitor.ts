@@ -8,28 +8,26 @@ function helpText(ns: NS): never {
     return ns.exit();
 }
 
-function selectTarget(ns: NS, flags: { [key: string]: ScriptArg | string[]; }): string {
-    if (Array.isArray(flags._) && flags._.length > 0 && ns.serverExists(flags._[0])) {
-        return flags._[0];
+export async function selectTarget(ns: NS, refreshRate = 200): Promise<string> {
+    while (!ns.fileExists('dispatch-pid.txt')) {
+        await ns.sleep(refreshRate);
     }
-    if (ns.fileExists('dispatch-pid.txt')) {
-        const pid = Number(ns.read('dispatch-pid.txt') || "0");
-        if (pid == 0) {
-            ns.tprint("dispatch-pid.txt is empty");
+    await ns.sleep(refreshRate);
+    const pid = Number(ns.read('dispatch-pid.txt') || "0");
+    if (pid == 0) {
+        ns.tprint("dispatch-pid.txt is empty");
+        ns.exit();
+    }
+    if (ns.getRunningScript(pid)?.pid === pid) {
+        const target = ns.read('target.txt');
+        if (ns.serverExists(target)) {
+            return target;
+        } else {
+            ns.tprint(`target.txt: "${target}" is not a real server`);
             ns.exit();
-        }
-        if (ns.getRunningScript(pid)?.pid == pid) {
-            const target = ns.read('target.txt');
-            if (ns.serverExists(target)) {
-                return target;
-            } else {
-                ns.tprint(`target.txt: "${target}" is not a real server`);
-                ns.exit();
-            }
         }
     }
     return helpText(ns);
-
 }
 
 export async function main(ns: NS) {
@@ -42,9 +40,14 @@ export async function main(ns: NS) {
     }
     ns.tail();
     ns.disableLog('ALL');
-    const server = selectTarget(ns, flags);
     // eslint-disable-next-line no-constant-condition
-    while (true) {
+    for (; ;) {
+        let server: string;
+        if (Array.isArray(flags._) && flags._.length > 0 && ns.serverExists(flags._[0])) {
+            server = flags._[0];
+        } else {
+            server = await selectTarget(ns, flags.refreshRate as number);
+        }
         let money = ns.getServerMoneyAvailable(server);
         if (money === 0) money = 1;
         const maxMoney = ns.getServerMaxMoney(server);
@@ -57,7 +60,6 @@ export async function main(ns: NS) {
         ns.print(` hack____: ${ns.tFormat(ns.getHackTime(server))} (t=${Math.ceil(ns.hackAnalyzeThreads(server, money))})`);
         ns.print(` grow____: ${ns.tFormat(ns.getGrowTime(server))} (t=${Math.ceil(ns.growthAnalyze(server, maxMoney / money))})`);
         ns.print(` weaken__: ${ns.tFormat(ns.getWeakenTime(server))} (t=${Math.ceil((sec - minSec) * 20)})`);
-        await ns.sleep(flags.refreshrate as ScriptArg as number);
     }
 }
 

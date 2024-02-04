@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 
 export const Costs = {
     torRouter: 200_000,
@@ -21,6 +21,9 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
     const startedWorking = ns.singularity.createProgram(script);
     if (startedWorking) {
         while (!ns.fileExists(script, "home")) {
+            if (ns.singularity.getCurrentWork() === null || ns.singularity.getCurrentWork().type !== "CREATE_PROGRAM") {
+                return false;
+            }
             await ns.sleep(1000);
         }
         return true;
@@ -47,4 +50,17 @@ export async function getScript(ns: NS, which: `${ScriptFile}`) {
     }
 
     return;
+}
+
+export async function main(ns: NS) {
+    const which = ns.args[0] as string ?? "SQLInject.exe";
+    if (ns.fileExists(which, "home")) {
+        return;
+    } else {
+        await getScript(ns, which as `${ScriptFile}`);
+    }
+}
+
+export function autocomplete(data: AutocompleteData, ...args: string[]) {
+    return [ScriptFile.BruteSSH, ScriptFile.FTPCrack, ScriptFile.HTTPWorm, ScriptFile.SQLInject, ScriptFile.relaySMTP];
 }

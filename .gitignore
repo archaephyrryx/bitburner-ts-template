@@ -20,3 +20,5 @@ mcc/interval
 mcc/spiralize
 mcc/Mercury/**/*
 mcc/trader
+mcc/graphcolor
+.vscode/settings.json
