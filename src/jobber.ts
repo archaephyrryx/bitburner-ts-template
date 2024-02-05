@@ -1,8 +1,12 @@
 import { NS, CompanyName, Player } from "@ns";
 import { allocateWorker } from "./worker";
+import { mimicPad } from "./util/stringtools";
 
 export type Who = "self" | number;
 export let Working: { [k in CompanyName]?: boolean };
+
+const FactionUnlockRep = 400_000;
+
 
 const MegacorpNames: `${CompanyName}`[] = [
     "ECorp",
@@ -16,6 +20,8 @@ const MegacorpNames: `${CompanyName}`[] = [
     "KuaiGong International",
     "Fulcrum Technologies",
 ];
+
+const WidestName = MegacorpNames.toSorted((a, b) => b.length - a.length)[0];
 
 function corpFaction(corp: string): string {
     if (corp === "Fulcrum Technologies") {
@@ -52,7 +58,9 @@ export async function main(ns: NS) {
         }
     }
 
-    for (; ;) {
+    const reassignCooldownMinutes = 60;
+
+    for (let i = 0; ; i++) {
         const missingWorkers = [];
 
         for (const corp of MegacorpNames) {
@@ -67,29 +75,42 @@ export async function main(ns: NS) {
             }
         }
 
-        for (const corp of missingWorkers) {
-            if (plyr.factions.includes(corpFaction(corp))) {
-                continue;
-            }
-            const [who, done] = allocateWorker(ns, corp as CompanyName);
-            if (done) {
-                Working[corp as CompanyName] = true;
-                workers.push(who);
-            } else if (who > 0) {
-                if (!ns.exec("joblin.js", "home", {}, corp, who)) {
-                    ns.toast("not enough ram to exec joblin...", "warning", 3000);
+        if (i % reassignCooldownMinutes === 0) {
+            for (const corp of missingWorkers) {
+                if (plyr.factions.includes(corpFaction(corp))) {
+                    continue;
                 }
-                continue;
-            } else {
-                if (!ns.exec("joblin.js", "home", {}, corp, "self")) {
-                    ns.toast("not enough ram to exec joblin...", "warning", 3000);
+                const [who, done] = allocateWorker(ns, corp as CompanyName);
+                if (done) {
+                    Working[corp as CompanyName] = true;
+                    workers.push(who);
+                } else if (who > 0) {
+                    if (!ns.exec("joblin.js", "home", {}, corp, who)) {
+                        ns.toast("not enough ram to exec joblin...", "warning", 3000);
+                    }
+                    continue;
+                } else {
+                    if (!ns.exec("joblin.js", "home", {}, corp, "self")) {
+                        ns.toast("not enough ram to exec joblin...", "warning", 3000);
+                    }
                 }
             }
-            // wait 1 minute before cycling to avoid clobbering previous reassignments
-            await ns.sleep(1000 * 60);
         }
 
-        // wait one hour between batches of reassignments
-        await ns.sleep(60 * 60 * 1000);
+
+        // wait 1 minute before cycling to avoid clobbering previous reassignments; will reassign every reassignCooldownMinutes cycles
+        ns.clearLog();
+        for (const corp of MegacorpNames) {
+            const favor = ns.singularity.getCompanyFavor(corp);
+            const favorGain = ns.singularity.getCompanyFavorGain(corp);
+            const rep = ns.singularity.getCompanyRep(corp);
+            const hasFaction = ns.getPlayer().factions.includes(corpFaction(corp));
+            if (hasFaction) {
+                ns.print(`INFO: ${mimicPad(WidestName, corp)} at ${ns.formatNumber(rep)} rep\t${ns.formatNumber(favor, 0)} (+${ns.formatNumber(favorGain + favor - Math.floor(favor), 0)}) favor (Faction: UNLOCKED)`)
+            } else {
+                ns.print(`WARN: ${mimicPad(WidestName, corp)} at ${ns.formatNumber(rep)} rep\t${ns.formatNumber(favor, 0)} (+${ns.formatNumber(favorGain + favor - Math.floor(favor), 0)}) favor (Faction: ${ns.formatPercent(rep / FactionUnlockRep)})`)
+            }
+        }
+        await ns.sleep(1000 * 60);
     }
 }

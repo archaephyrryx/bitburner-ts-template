@@ -1,4 +1,4 @@
-import { NS } from '@ns';
+import { AutocompleteData, NS } from '@ns';
 import { aggregateStockInfo } from './stock_helper';
 
 const expectedCommission = 100000;
@@ -225,6 +225,9 @@ export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
 
 
 export async function main(ns: NS): Promise<void> {
+    const flags = ns.flags([
+        ["force", false]
+    ]);
     ns.tprint("Starting automated trade script...");
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     switch (ns.args[0]) {
@@ -234,11 +237,40 @@ export async function main(ns: NS): Promise<void> {
             return;
         case "autosell":
             ns.tail();
-            await autoTrader(ns, false, (ns.args[1] == "--force"));
+            await autoTrader(ns, false, flags.force as boolean);
             return;
         default:
             ns.tprint("ERROR: Invalid argument!");
             ns.tprint("HINT: Commands are autotrade and autosell.");
             return;
     }
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    if (args.length === 1 && args[0] === "autosell") {
+        data.flags([["force", false]]);
+        return [];
+    } else if (args.length === 1) {
+        return [];
+    } else if (args.length === 0) {
+        return ["autosell", "autotrade"];
+    }
+}
+
+/**
+ * Attempt to liquidate all held symbol purchases to make an expensive purchase.
+ *
+ * @param ns {NS} NetScript instance
+ * @returns True if an autotrader instance was found and funds were liquidated (even if no money was gained), otherwise false
+ */
+export async function liquidate(ns: NS): Promise<boolean> {
+    if (ns.isRunning("market.js", "home", "autotrade")) {
+        ns.scriptKill("market.js", "home");
+        const pid = ns.exec("market.js", "home", {}, "autosell", "--force")
+        while (ns.isRunning(pid)) {
+            await ns.sleep(1000);
+        }
+        return true;
+    }
+    return false;
 }

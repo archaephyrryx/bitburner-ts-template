@@ -20,7 +20,7 @@ export async function main(ns: NS) {
     ns.scriptKill("market.js", "home");
     ns.exec("market.js", "home", {}, "autosell", "--force");
     await ns.sleep(5000);
-    ns.exec("augs.js", "home", {}, "buy-avail");
+    ns.exec("augs.js", "home", {}, "buy-avail", "--neuro");
     while (ns.singularity.upgradeHomeCores()) {
         await ns.sleep(100);
     }

@@ -259,6 +259,7 @@ export async function main(ns: NS) {
         case "init":
         case "optimize":
         default:
+            await boostAmount(ns, 8);
             await optimize(ns);
             return;
     }
