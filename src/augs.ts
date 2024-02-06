@@ -174,8 +174,8 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
 
 async function buyAvail(ns: NS, neuro: boolean) {
     outer: for (; ;) {
-        const remaining = listAvail(ns, false, false);
-        if (remaining.filter((x) => x ?? false).length == 0) {
+        const remaining = listAvail(ns, false, false).filter((x) => x ?? false);
+        if (remaining.length == 0) {
             break outer;
         }
 
