@@ -29,12 +29,33 @@ export function assertPortCount(n: number): asserts n is PortCount {
     return;
 }
 
-async function getExploits(ns: NS, portCount: PortCount): Promise<void> {
-    if (portCount >= 1) await getScript(ns, ScriptFile.BruteSSH);
-    if (portCount >= 2) await getScript(ns, ScriptFile.FTPCrack);
-    if (portCount >= 3) await getScript(ns, ScriptFile.relaySMTP);
-    if (portCount >= 4) await getScript(ns, ScriptFile.HTTPWorm);
-    if (portCount >= 5) await getScript(ns, ScriptFile.SQLInject);
+async function spawnJoin(ns: NS, script: string, ...args: string[]): Promise<boolean> {
+    const pid = ns.exec(script, "home", {}, ...args);
+    if (pid === 0) {
+        ns.tprint(`ERROR: Unable to exec '${script} ${args.join(' ')}'!`);
+        return false;
+    }
+    while (ns.isRunning(pid)) {
+        await ns.sleep(1000);
+    }
+    return true;
+}
+
+async function execGetScript(ns: NS, scriptfile: `${ScriptFile}`): Promise<boolean> {
+    const ret = await spawnJoin(ns, "scriptfiles.js", scriptfile as string);
+    if (ret && !ns.fileExists(scriptfile, "home")) {
+        ns.tprint(`ERROR: ran script to acquire ${scriptfile}, but process terminated before file was obtained!`);
+        return false;
+    }
+    return ret;
+}
+
+async function execGetExploits(ns: NS, portCount: PortCount) {
+    if (portCount >= 1 && !await execGetScript(ns, "BruteSSH.exe")) ns.exit();
+    if (portCount >= 2 && !await execGetScript(ns, ScriptFile.FTPCrack)) ns.exit();
+    if (portCount >= 3 && !await execGetScript(ns, ScriptFile.relaySMTP)) ns.exit();
+    if (portCount >= 4 && !await execGetScript(ns, ScriptFile.HTTPWorm)) ns.exit();
+    if (portCount >= 5 && !await execGetScript(ns, ScriptFile.SQLInject)) ns.exit();
     return;
 }
 
@@ -50,7 +71,7 @@ async function getExploits(ns: NS, portCount: PortCount): Promise<void> {
 async function acquirePorts(ns: NS, serv: string): Promise<void> {
     const ports = ns.getServerNumPortsRequired(serv);
     assertPortCount(ports);
-    await getExploits(ns, ports);
+    await execGetExploits(ns, ports);
     if (ports == 5) ns.sqlinject(serv);
     if (ports >= 4) ns.httpworm(serv);
     if (ports >= 3) ns.relaysmtp(serv);
@@ -64,7 +85,7 @@ async function acquirePorts(ns: NS, serv: string): Promise<void> {
     }
 }
 
-export async function executeBackdoor(ns: NS, server: string, join = true): Promise<void> {
+export async function executeBackdoor(ns: NS, server: string): Promise<void> {
     if (isBackdoored(ns, server)) {
         ns.toast(`Server ${server} has already been backdoored...`, "info", 3000);
         return;
@@ -77,11 +98,6 @@ export async function executeBackdoor(ns: NS, server: string, join = true): Prom
     await ns.singularity.installBackdoor();
     ns.singularity.connect("home");
     ns.toast(`Sucessfully installed backdoor on server ${server}`, "success", 2000);
-    if (join) {
-        for (const faction in ns.singularity.checkFactionInvitations) {
-            ns.singularity.joinFaction(faction);
-        }
-    }
 }
 
 export async function main(ns: NS): Promise<void> {

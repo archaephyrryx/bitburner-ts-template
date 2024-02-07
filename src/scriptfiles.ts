@@ -33,13 +33,14 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
 }
 
 
-export async function getScript(ns: NS, which: `${ScriptFile}`) {
+export async function getScript(ns: NS, which: `${ScriptFile}`, forceTor = false) {
     if (ns.fileExists(which, "home")) {
         return;
     }
-    const done = await createScript(ns, which);
-
-    if (done) return true;
+    if (!forceTor) {
+        const done = await createScript(ns, which);
+        if (done) return true;
+    }
 
     while (!ns.singularity.purchaseTor()) {
         await ns.sleep(1000);
@@ -52,15 +53,26 @@ export async function getScript(ns: NS, which: `${ScriptFile}`) {
     return;
 }
 
+
 export async function main(ns: NS) {
+    const flags = ns.flags([["tor", false]])
     const which = ns.args[0] as string ?? "SQLInject.exe";
+
+    function lastDitch() {
+        if (ns.singularity.purchaseTor()) {
+            ns.singularity.purchaseProgram(which);
+        }
+    }
+
     if (ns.fileExists(which, "home")) {
         return;
     } else {
-        await getScript(ns, which as `${ScriptFile}`);
+        ns.atExit(lastDitch);
+        await getScript(ns, which as `${ScriptFile}`, flags.tor as boolean);
     }
 }
 
 export function autocomplete(data: AutocompleteData, ...args: string[]) {
+    data.flags([["tor", false]]);
     return [ScriptFile.BruteSSH, ScriptFile.FTPCrack, ScriptFile.HTTPWorm, ScriptFile.SQLInject, ScriptFile.relaySMTP];
 }
