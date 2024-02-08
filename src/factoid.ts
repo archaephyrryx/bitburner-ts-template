@@ -4,7 +4,7 @@ type OtherSources = { kind: "exclusive", graftable: boolean } | { kind: "faction
 
 type AugReq = { augName: string, otherSources: OtherSources, reqRep: number };
 
-type FactionRepProgress = { factionName: string, augReqs: AugReq[], myRep: number };
+export type FactionRepProgress = { factionName: string, augReqs: AugReq[], myRep: number };
 
 const Flags: [string, (number | boolean)][] =
     [
@@ -19,16 +19,17 @@ export async function main(ns: NS) {
 
     for (; ;) {
         ns.clearLog();
-        showFactionRepProgress(ns, flags);
+        const table = getFactionRepProgress(ns);
+        display(ns, table, flags);
         await ns.sleep(flags.refreshRate as ScriptArg as number);
     }
 }
 
-function showFactionRepProgress(ns: NS, flags: { [key: string]: string[] | ScriptArg; }) {
+export function getFactionRepProgress(ns: NS): FactionRepProgress[] {
     const factions = ns.getPlayer().factions;
     const ownedAugs = ns.singularity.getOwnedAugmentations(true);
     const graftableAugs = ns.grafting.getGraftableAugmentations();
-    const table = [];
+    const table: FactionRepProgress[] = [];
     outer: for (const factionName of factions) {
         const allAugs = ns.singularity.getAugmentationsFromFaction(factionName);
         const missing = allAugs.filter((a) => !ownedAugs.includes(a));
@@ -64,7 +65,7 @@ function showFactionRepProgress(ns: NS, flags: { [key: string]: string[] | Scrip
         }
         table.push({ factionName, myRep, augReqs })
     }
-    display(ns, table, flags);
+    return table;
 }
 
 function display(ns: NS, table: FactionRepProgress[], flags: { [key: string]: string[] | ScriptArg }) {

@@ -8,7 +8,7 @@ export let Working: { [k in CompanyName]?: boolean };
 const FactionUnlockRep = 400_000;
 
 
-const MegacorpNames: `${CompanyName}`[] = [
+export const MegacorpNames: `${CompanyName}`[] = [
     "ECorp",
     "MegaCorp",
     "Bachman & Associates",
@@ -23,7 +23,7 @@ const MegacorpNames: `${CompanyName}`[] = [
 
 const WidestName = MegacorpNames.toSorted((a, b) => b.length - a.length)[0];
 
-function corpFaction(corp: string): string {
+export function corpFaction(corp: string): string {
     if (corp === "Fulcrum Technologies") {
         return "Fulcrum Secret Technologies";
     } else if (MegacorpNames.includes(corp as `${CompanyName}`)) {

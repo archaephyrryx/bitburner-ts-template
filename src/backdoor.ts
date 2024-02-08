@@ -51,7 +51,7 @@ async function execGetScript(ns: NS, scriptfile: `${ScriptFile}`): Promise<boole
 }
 
 async function execGetExploits(ns: NS, portCount: PortCount) {
-    if (portCount >= 1 && !await execGetScript(ns, "BruteSSH.exe")) ns.exit();
+    if (portCount >= 1 && !await execGetScript(ns, ScriptFile.BruteSSH)) ns.exit();
     if (portCount >= 2 && !await execGetScript(ns, ScriptFile.FTPCrack)) ns.exit();
     if (portCount >= 3 && !await execGetScript(ns, ScriptFile.relaySMTP)) ns.exit();
     if (portCount >= 4 && !await execGetScript(ns, ScriptFile.HTTPWorm)) ns.exit();

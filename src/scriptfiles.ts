@@ -1,4 +1,5 @@
 import { AutocompleteData, NS } from "@ns";
+import { CompanyWorkTask, CreateProgramWorkTask, CrimeTask, FactionWorkTask, GraftingTask, StudyTask, getWork } from "./global";
 
 export const Costs = {
     torRouter: 200_000,
@@ -17,11 +18,45 @@ export enum ScriptFile {
 //     ["SQLInject.exe"]: 250_000_000,
 // }
 
+
 export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boolean> {
+    const prevWork = getWork(ns);
+    if (prevWork !== null) {
+        switch (prevWork.type) {
+            case 'CLASS':
+                ns.singularity.stopAction();
+                break;
+            case 'COMPANY':
+                ns.singularity.stopAction();
+                break;
+            case 'CREATE_PROGRAM':
+                if (prevWork.programName == script) {
+                    while (getWork(ns) === prevWork) {
+                        await ns.sleep(1000);
+                    }
+                    break;
+                }
+                ns.singularity.stopAction()
+                break;
+            case 'CRIME':
+                ns.singularity.stopAction();
+                break;
+            case 'FACTION':
+                ns.singularity.stopAction();
+                break;
+            case 'GRAFTING':
+                return false;
+        }
+    }
+
+    if (ns.fileExists(script, "home")) {
+        return true;
+    }
     const startedWorking = ns.singularity.createProgram(script);
     if (startedWorking) {
         while (!ns.fileExists(script, "home")) {
-            if (ns.singularity.getCurrentWork() === null || ns.singularity.getCurrentWork().type !== "CREATE_PROGRAM") {
+            const work = getWork(ns);
+            if (work === null || work.type !== "CREATE_PROGRAM") {
                 return false;
             }
             await ns.sleep(1000);

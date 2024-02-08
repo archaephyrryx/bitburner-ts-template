@@ -1,5 +1,6 @@
-import { NS, CompanyName } from '@ns';
-import { Who, Working } from './jobber';
+import { NS, CompanyName, AutocompleteData } from '@ns';
+import { MegacorpNames, Who } from './jobber';
+import { getWork } from './global';
 
 export async function main(ns: NS) {
     await workAt(ns, ns.args[0] as CompanyName, ns.args[1] as Who);
@@ -41,13 +42,11 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
             while (!ns.sleeve.setToCompanyWork(who, where)) {
                 await ns.sleep(1000);
             }
-            Working[where as CompanyName] = true;
             return true;
         }
     } else if (who === "self") {
-        const busy = ns.singularity.isBusy();
-        const task = ns.singularity.getCurrentWork();
-        if (busy) {
+        const task = getWork(ns);
+        if (task !== null) {
             switch (task.type) {
                 case "GRAFTING":
                 case "CREATE_PROGRAM":
@@ -72,7 +71,15 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
                 await ns.sleep(1000);
             }
         }
-        Working[where] = ns.singularity.workForCompany(where)
+        ns.singularity.workForCompany(where);
     }
     return true;
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    if (args.length === 1 && MegacorpNames.includes(args[0] as typeof MegacorpNames[number])) {
+        return [0, 1, 2, 3, 4, 5, 6, 7, "self"];
+    } else {
+        return [...MegacorpNames] as string[];
+    }
 }
