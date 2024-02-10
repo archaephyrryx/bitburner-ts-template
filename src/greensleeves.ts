@@ -1,13 +1,10 @@
 import { NS, SleevePerson, SleeveTask, CompanyName, AutocompleteData } from "@ns";
-import { MegacorpNames, corpFaction } from "./jobber";
 import { uniqSort } from "./util/arraytools";
 import { getFactionRepProgress, FactionRepProgress } from "./factoid";
-
-const factionWork = (factionName: string, factionWorkType = "field") => ({ type: "FACTION", factionWorkType, factionName })
+import { getCompanyInfo, MegacorpNames } from "./global";
 
 const SYNCHRO_THRESHOLD = 50;
 const SHOCK_THRESHOLD = 90;
-
 
 enum CrimeType {
     shoplift = "Shoplift",
@@ -94,9 +91,6 @@ async function initiateCrime(ns: NS, count: number, crime: `${CrimeType}` = "Sho
     }
 }
 
-export function autocomplete(data: AutocompleteData, args: string[]) {
-    return ["work", "crime"];
-}
 
 async function initiateWork(ns: NS, count: number) {
     const prog = getFactionRepProgress(ns);
@@ -193,29 +187,6 @@ async function initiateWork(ns: NS, count: number) {
     }
 }
 
-export type CompanyInfo = { corp: string, rep: number, favor: number, nextFavor: number, hasFaction: boolean };
-
-
-export function getCompanyInfo(ns: NS, names: `${CompanyName}`[]): CompanyInfo[] {
-    const infos = [];
-
-    for (const corp of names) {
-        const favor = ns.singularity.getCompanyFavor(corp);
-        const favorGain = ns.singularity.getCompanyFavorGain(corp);
-
-        const nextFavor = favor + favorGain;
-
-        const rep = ns.singularity.getCompanyRep(corp);
-
-        const allFactions = [...ns.getPlayer().factions, ...ns.singularity.checkFactionInvitations()];
-        const hasFaction = allFactions.includes(corpFaction(corp));
-
-        infos.push({ corp, rep, favor, nextFavor, hasFaction });
-    }
-
-    return infos;
-}
-
 function shouldWork(faction: string, progress: FactionRepProgress[]): boolean {
     const tmp = findProgress(progress, faction);
     if (tmp === undefined) {
@@ -254,4 +225,8 @@ function shouldWork(faction: string, progress: FactionRepProgress[]): boolean {
 
 function findProgress(progs: FactionRepProgress[], name: string): FactionRepProgress | undefined {
     return progs.find((frp) => frp.factionName === name);
+}
+
+export function autocomplete(_data: AutocompleteData, args: string[]) {
+    return ["work", "crime"];
 }

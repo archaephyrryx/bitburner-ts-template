@@ -1,114 +1,109 @@
 import { NS, CompanyName, Player } from "@ns";
-import { allocateWorker } from "./worker";
 import { mimicPad } from "./util/stringtools";
+import { CompanyInfo, getCompanyInfo, MegacorpNames, corpFaction } from "./global";
+
+const bold = "\u001b[01m";
+const reset = "\u001b[0m";
 
 export type Who = "self" | number;
-export let Working: { [k in CompanyName]?: boolean };
 
 const FactionUnlockRep = 400_000;
-
-
-export const MegacorpNames: `${CompanyName}`[] = [
-    "ECorp",
-    "MegaCorp",
-    "Bachman & Associates",
-    "Blade Industries",
-    "NWO",
-    "Clarke Incorporated",
-    "OmniTek Incorporated",
-    "Four Sigma",
-    "KuaiGong International",
-    "Fulcrum Technologies",
-];
+const AssignmentCooldownMinutes = 60;
 
 const WidestName = MegacorpNames.toSorted((a, b) => b.length - a.length)[0];
 
-export function corpFaction(corp: string): string {
-    if (corp === "Fulcrum Technologies") {
-        return "Fulcrum Secret Technologies";
-    } else if (MegacorpNames.includes(corp as `${CompanyName}`)) {
-        return corp;
+function getSleeveCompanies(ns: NS): `${CompanyName}`[] {
+    const nSleeves = ns.sleeve.getNumSleeves();
+    const ret: `${CompanyName}`[] = [];
+    for (let i = 0; i < nSleeves; i++) {
+        const task = ns.sleeve.getTask(i);
+        if (task !== null && task.type == 'COMPANY') {
+            ret.push(`${task.companyName}`);
+        }
     }
-    throw new Error(`Corporation ${corp} not recognized or has no faction.`);
+    return ret;
 }
 
 export async function main(ns: NS) {
     ns.tail();
     ns.disableLog('singularity.applyToCompany');
-    Working = {};
-    const workers: Who[] = [];
+    ns.disableLog('exec');
+    ns.disableLog('sleep');
 
-    const plyr: Player = ns.getPlayer();
 
-    for (const corp of MegacorpNames) {
-        const success = ns.singularity.applyToCompany(corp, "Software");
-        if (success) {
-            const [who, done] = allocateWorker(ns, corp as CompanyName);
-            if (done) {
-                Working[corp as CompanyName] = true;
-                workers.push(who);
-            } else if (who >= 0) {
-                ns.exec(ns.getScriptName(), "home", {}, "work", corp, who);
-                continue;
-            }
-        } else if (typeof ns.getPlayer().jobs[corp as CompanyName] !== "undefined") {
-            continue;
-        } else {
-            ns.tprint(`WARNING: unable to automatically enroll for job at ${corp}`);
-        }
-    }
-
-    const reassignCooldownMinutes = 60;
-
+    ns.tprint("Checking for missing jobs...");
     for (let i = 0; ; i++) {
-        const missingWorkers = [];
-
+        const plyr: Player = ns.getPlayer();
         for (const corp of MegacorpNames) {
             if (ns.singularity.applyToCompany(corp, "Software")) {
-                ns.toast(`Accepted promotion at ${corp}!`, "success", 2500);
-            }
-            if (Working[corp as CompanyName] ?? false) {
-                Working[corp] = false;
-                continue;
-            } else {
-                missingWorkers.push(corp);
+                ns.toast(`Accepted position or promotion at ${corp}!`, "success", 2500);
             }
         }
 
-        if (i % reassignCooldownMinutes === 0) {
-            for (const corp of missingWorkers) {
-                if (plyr.factions.includes(corpFaction(corp))) {
-                    continue;
+        if (i % AssignmentCooldownMinutes === 0) {
+            const gsPid = ns.exec("greensleeves.js", "home", {}, "work");
+
+            if (gsPid === 0) {
+                ns.tprint("WARNING: unable to run `greensleeves.js work` on home");
+            }
+
+            const hasWorkers = getSleeveCompanies(ns);
+
+            const missingWorkers: `${CompanyName}`[] = [];
+            for (const corp of MegacorpNames) {
+                if (plyr.jobs[corp] !== undefined) {
+                    if (!hasWorkers.includes(corp)) {
+                        missingWorkers.push(corp);
+                    }
                 }
-                const [who, done] = allocateWorker(ns, corp as CompanyName);
-                if (done) {
-                    Working[corp as CompanyName] = true;
-                    workers.push(who);
-                } else if (who > 0) {
-                    if (!ns.exec("joblin.js", "home", {}, corp, who)) {
-                        ns.toast("not enough ram to exec joblin...", "warning", 3000);
+            }
+
+            if (missingWorkers.length > 0) {
+                let candidate: CompanyInfo | null = null;
+                let backup: CompanyInfo | null = null;
+
+                const infos = getCompanyInfo(ns, missingWorkers);
+                for (const info of infos) {
+                    if (info.hasFaction) {
+                        if (backup === null || (backup.hasFaction && backup.nextFavor > info.nextFavor)) {
+                            backup = info;
+                        }
+                        continue;
                     }
-                    continue;
-                } else {
-                    if (!ns.exec("joblin.js", "home", {}, corp, "self")) {
-                        ns.toast("not enough ram to exec joblin...", "warning", 3000);
+                    if (candidate === null) {
+                        candidate = info;
+                    } else {
+                        if (candidate.nextFavor > info.nextFavor || (candidate.nextFavor == info.nextFavor && candidate.rep > info.rep)) {
+                            candidate = info;
+                        } else if (info.rep >= FactionUnlockRep * 0.50 && info.rep > candidate.rep) {
+                            candidate = info;
+                        } else {
+                            continue;
+                        }
                     }
+                }
+                const finalist = (candidate === null) ? ((backup === null) ? missingWorkers[0] : backup.corp) : candidate.corp;
+                if (ns.exec("joblin.js", "home", {}, finalist, "self") === 0) {
+                    ns.toast("not enough ram to exec joblin...", "warning", 3000);
                 }
             }
         }
 
-
-        // wait 1 minute before cycling to avoid clobbering previous reassignments; will reassign every reassignCooldownMinutes cycles
         ns.clearLog();
-        for (const corp of MegacorpNames) {
-            const favor = ns.singularity.getCompanyFavor(corp);
-            const favorGain = ns.singularity.getCompanyFavorGain(corp);
-            const rep = ns.singularity.getCompanyRep(corp);
-            const hasFaction = ns.getPlayer().factions.includes(corpFaction(corp));
-            if (hasFaction) {
-                ns.print(`INFO: ${mimicPad(WidestName, corp)} at ${ns.formatNumber(rep)} rep\t${ns.formatNumber(favor, 0)} (+${ns.formatNumber(favorGain + favor - Math.floor(favor), 0)}) favor (Faction: UNLOCKED)`)
+        const infos = getCompanyInfo(ns, MegacorpNames);
+        const maxRep = infos.toSorted((a, b) => b.rep - a.rep)[0].rep;
+        // wait 1 minute before cycling to avoid clobbering previous reassignments; will reassign every AssignmentCooldownMinutes cycles
+        for (const info of infos) {
+            if (info.hasFaction) {
+                ns.print(`INFO: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (Faction: UNLOCKED)`)
+            } else if (plyr.jobs[info.corp as `${CompanyName}`] !== null) {
+                if (info.rep == maxRep) {
+                    ns.print(`${bold}WARN: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (Faction: ${ns.formatPercent(info.rep / FactionUnlockRep)})${reset}`)
+                } else {
+                    ns.print(`WARN: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (Faction: ${ns.formatPercent(info.rep / FactionUnlockRep)})`)
+                }
             } else {
-                ns.print(`WARN: ${mimicPad(WidestName, corp)} at ${ns.formatNumber(rep)} rep\t${ns.formatNumber(favor, 0)} (+${ns.formatNumber(favorGain + favor - Math.floor(favor), 0)}) favor (Faction: ${ns.formatPercent(rep / FactionUnlockRep)})`)
+                ns.print(`WARN: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (NOT ENROLLED IN JOB)`)
             }
         }
         await ns.sleep(1000 * 60);
