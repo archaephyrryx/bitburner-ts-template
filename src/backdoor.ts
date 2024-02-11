@@ -1,7 +1,6 @@
 import { NS } from "@ns";
-import { getGraph } from "./census";
 import { getRoute } from "./findpath";
-import { ScriptFile, getScript } from "./scriptfiles";
+import { ScriptFile } from "./scriptfiles";
 
 /**
  * Times to wait for an external resource or skill level to become sufficient to
@@ -20,13 +19,36 @@ function isBackdoored(ns: NS, serv: string): boolean {
     return ns.getServer(serv).backdoorInstalled ?? false;
 }
 
-type PortCount = 0 | 1 | 2 | 3 | 4 | 5;
+type Port = "SSH" | "FTP" | "SMTP" | "HTTP" | "SQL";
 
-export function assertPortCount(n: number): asserts n is PortCount {
-    if (n > 5 || n < 0) {
-        throw new Error(`Unexpected non-portcount number {n}`);
+function getClosedPorts(ns: NS, server: string): Port[] {
+    const ret: Port[] = [];
+    const serv = ns.getServer(server);
+    if (!serv.sshPortOpen) ret.push("SSH");
+    if (!serv.ftpPortOpen) ret.push("FTP");
+    if (!serv.smtpPortOpen) ret.push("SMTP");
+    if (!serv.httpPortOpen) ret.push("HTTP");
+    if (!serv.sqlPortOpen) ret.push("SQL");
+    return ret;
+}
+
+function neededScripts(ns: NS, server: string): ScriptFile[] {
+    const serv = ns.getServer(server);
+    if (serv.backdoorInstalled ?? false) {
+        return [];
     }
-    return;
+    const neededPorts = serv.numOpenPortsRequired ?? 0;
+    const currentPorts = serv.openPortCount ?? 0;
+
+    const allClosed = getClosedPorts(ns, server);
+    let missing;
+    if (allClosed.length > neededPorts - currentPorts) {
+        missing = allClosed.slice(0, neededPorts - currentPorts);
+    } else {
+        missing = allClosed;
+    }
+
+    return missing.map(portToExploit);
 }
 
 async function spawnJoin(ns: NS, script: string, ...args: string[]): Promise<boolean> {
@@ -50,13 +72,14 @@ async function execGetScript(ns: NS, scriptfile: `${ScriptFile}`): Promise<boole
     return ret;
 }
 
-async function execGetExploits(ns: NS, portCount: PortCount) {
-    if (portCount >= 1 && !await execGetScript(ns, ScriptFile.BruteSSH)) ns.exit();
-    if (portCount >= 2 && !await execGetScript(ns, ScriptFile.FTPCrack)) ns.exit();
-    if (portCount >= 3 && !await execGetScript(ns, ScriptFile.relaySMTP)) ns.exit();
-    if (portCount >= 4 && !await execGetScript(ns, ScriptFile.HTTPWorm)) ns.exit();
-    if (portCount >= 5 && !await execGetScript(ns, ScriptFile.SQLInject)) ns.exit();
-    return;
+async function execGetExploits(ns: NS, server: string): Promise<ScriptFile[]> {
+    const neededExploits = neededScripts(ns, server);
+    for (const exploit of neededExploits) {
+        if (!await execGetScript(ns, exploit)) {
+            ns.exit()
+        }
+    }
+    return neededExploits;
 }
 
 /**
@@ -69,14 +92,26 @@ async function execGetExploits(ns: NS, portCount: PortCount) {
  * @param ports {number} Number of ports required to hack the server
  */
 async function acquirePorts(ns: NS, serv: string): Promise<void> {
-    const ports = ns.getServerNumPortsRequired(serv);
-    assertPortCount(ports);
-    await execGetExploits(ns, ports);
-    if (ports == 5) ns.sqlinject(serv);
-    if (ports >= 4) ns.httpworm(serv);
-    if (ports >= 3) ns.relaysmtp(serv);
-    if (ports >= 2) ns.ftpcrack(serv);
-    if (ports >= 1) ns.brutessh(serv);
+    const exploits = await execGetExploits(ns, serv);
+    for (const exploit of exploits) {
+        switch (exploit) {
+            case ScriptFile.BruteSSH:
+                ns.brutessh(serv);
+                break;
+            case ScriptFile.FTPCrack:
+                ns.ftpcrack(serv);
+                break;
+            case ScriptFile.SQLInject:
+                ns.sqlinject(serv);
+                break;
+            case ScriptFile.HTTPWorm:
+                ns.httpworm(serv);
+                break;
+            case ScriptFile.relaySMTP:
+                ns.relaysmtp(serv);
+                break;
+        }
+    }
     ns.nuke(serv);
     const minSkill = ns.getServerRequiredHackingLevel(serv);
     while (ns.getHackingLevel() < minSkill) {
@@ -121,5 +156,20 @@ export async function main(ns: NS): Promise<void> {
         } else {
             await executeBackdoor(ns, missing[0]);
         }
+    }
+}
+
+function portToExploit(value: Port): ScriptFile {
+    switch (value) {
+        case 'SSH':
+            return ScriptFile.BruteSSH;
+        case 'FTP':
+            return ScriptFile.FTPCrack;
+        case 'SMTP':
+            return ScriptFile.relaySMTP;
+        case 'HTTP':
+            return ScriptFile.HTTPWorm;
+        case 'SQL':
+            return ScriptFile.SQLInject;
     }
 }
