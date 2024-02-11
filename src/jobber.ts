@@ -1,6 +1,7 @@
 import { NS, CompanyName, Player } from "@ns";
 import { mimicPad } from "./util/stringtools";
-import { CompanyInfo, getCompanyInfo, MegacorpNames, corpFaction } from "./global";
+import { CompanyInfo, getCompanyInfo, MegacorpNames } from "./global";
+import { H, M } from './helper';
 
 const bold = "\u001b[01m";
 const reset = "\u001b[0m";
@@ -8,7 +9,8 @@ const reset = "\u001b[0m";
 export type Who = "self" | number;
 
 const FactionUnlockRep = 400_000;
-const AssignmentCooldownMinutes = 60;
+const SecondsBetweenResleeve = M;
+const SecondsBetweenSelfAssign = H;
 
 const WidestName = MegacorpNames.toSorted((a, b) => b.length - a.length)[0];
 
@@ -30,8 +32,6 @@ export async function main(ns: NS) {
     ns.disableLog('exec');
     ns.disableLog('sleep');
 
-
-    ns.tprint("Checking for missing jobs...");
     for (let i = 0; ; i++) {
         const plyr: Player = ns.getPlayer();
         for (const corp of MegacorpNames) {
@@ -40,13 +40,15 @@ export async function main(ns: NS) {
             }
         }
 
-        if (i % AssignmentCooldownMinutes === 0) {
+        if (i % SecondsBetweenResleeve === 0) {
             const gsPid = ns.exec("greensleeves.js", "home", {}, "work");
 
             if (gsPid === 0) {
                 ns.tprint("WARNING: unable to run `greensleeves.js work` on home");
             }
+        }
 
+        if (i % SecondsBetweenSelfAssign === 0) {
             const hasWorkers = getSleeveCompanies(ns);
 
             const missingWorkers: `${CompanyName}`[] = [];
@@ -96,7 +98,7 @@ export async function main(ns: NS) {
         for (const info of infos) {
             if (info.hasFaction) {
                 ns.print(`INFO: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (Faction: UNLOCKED)`)
-            } else if (plyr.jobs[info.corp as `${CompanyName}`] !== null) {
+            } else if (plyr.jobs[info.corp as `${CompanyName}`] !== undefined) {
                 if (info.rep == maxRep) {
                     ns.print(`${bold}WARN: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (Faction: ${ns.formatPercent(info.rep / FactionUnlockRep)})${reset}`)
                 } else {
@@ -106,6 +108,6 @@ export async function main(ns: NS) {
                 ns.print(`WARN: ${mimicPad(WidestName, info.corp)} at ${ns.formatNumber(info.rep)} rep\t${ns.formatNumber(info.favor, 0)} (+${ns.formatNumber(info.nextFavor - info.favor, 0)}) favor (NOT ENROLLED IN JOB)`)
             }
         }
-        await ns.sleep(1000 * 60);
+        await ns.sleep(1000);
     }
 }

@@ -1,6 +1,6 @@
 import { NS, CompanyName, AutocompleteData } from '@ns';
-import { MegacorpNames, Who } from './jobber';
-import { getWork } from './global';
+import { Who } from './jobber';
+import { getWork, MegacorpNames } from './global';
 
 export async function main(ns: NS) {
     await workAt(ns, ns.args[0] as CompanyName, ns.args[1] as Who);

@@ -42,7 +42,7 @@ function listCities(ns: NS, print = true): AugInfo[] {
                 ns.tprint(header)
                 for (const augInfo of tmp) {
                     const repReq = ns.singularity.getAugmentationRepReq(augInfo.augName);
-                    ns.tprint(` * ${augInfo.augName} for $${ns.formatNumber(augInfo.atPrice)} with ${repReq}`);
+                    ns.tprint(` * ${augInfo.augName} for $${ns.formatNumber(augInfo.atPrice)} with ${ns.formatNumber(repReq)}`);
                 }
                 ns.tprint(mimic(header));
                 ns.tprint("");
@@ -54,15 +54,8 @@ function listCities(ns: NS, print = true): AugInfo[] {
     return ret;
 }
 
-function listAvail(ns: NS, print = true, includeNeuro = true): AugInfo[] {
+function listAvail(ns: NS, print = true, includeNeuro = false): AugInfo[] {
     const owned = ns.singularity.getOwnedAugmentations(true);
-    let alreadyHave;
-    if (includeNeuro) {
-        alreadyHave = owned.filter((a) => !a.startsWith(NeuroGov));
-    } else {
-        alreadyHave = owned;
-    }
-
 
     const augSort = ((a: AugInfo, b: AugInfo) => b.atPrice - a.atPrice);
     const augEq = ((a: AugInfo, b: AugInfo) => a.augName === b.augName);
@@ -77,10 +70,14 @@ function listAvail(ns: NS, print = true, includeNeuro = true): AugInfo[] {
 
     for (const fromFaction of factions) {
         for (const augName of ns.singularity.getAugmentationsFromFaction(fromFaction)) {
-            if (alreadyHave.includes(augName)) {
-                continue;
-            } else if (canGetRaw.includes(augName)) {
-                continue;
+            if (owned.includes(augName)) {
+                if (augName.startsWith(NeuroGov)) {
+                    if (!includeNeuro) continue;
+                } else if (canGetRaw.includes(augName)) {
+                    continue;
+                } else {
+                    continue;
+                }
             }
             const prereqs = ns.singularity.getAugmentationPrereq(augName);
             const reqRep = ns.singularity.getAugmentationRepReq(augName);
@@ -104,17 +101,26 @@ function listAvail(ns: NS, print = true, includeNeuro = true): AugInfo[] {
 
     const ret = uniqSort(canGet, augSort, augEq);
 
-    if (print) {
-        ns.tprint(`=== Available Augmentations (Reputation Only) ===`);
-        const notified = [];
+    if (print && ret.length > 0) {
+        let shownHeader = false;
+        const header = () => {
+            if (!shownHeader) {
+                ns.tprint(`=== Available Augmentations (Reputation Only) ===`);
+                shownHeader = true;
+            }
+        };
+        const notified: string[] = [];
         for (const augInfo of ret) {
-            if (notified.findIndex((n) => n == augInfo.augName) == -1) {
+            if (augInfo !== undefined && !notified.includes(augInfo.augName)) {
                 const [now, afterSale] = canAfford(ns, augInfo.atPrice);
                 if (now) {
+                    header();
                     ns.tprint(`SUCCESS: Can purchase ${augInfo.augName} from ${augInfo.fromFaction} for $${ns.formatNumber(augInfo.atPrice)}!`);
                 } else if (afterSale) {
+                    header();
                     ns.tprint(`INFO: Could purchase ${augInfo.augName} from ${augInfo.fromFaction} after liquidating up to $${ns.formatNumber(augInfo.atPrice)}...`);
                 } else {
+                    header();
                     ns.tprint(`WARN: Additional funds required to purchase ${augInfo.augName} from ${augInfo.fromFaction} at base price of $${ns.formatNumber(augInfo.atPrice)}...`);
                 }
                 notified.push(augInfo.augName);
@@ -122,24 +128,33 @@ function listAvail(ns: NS, print = true, includeNeuro = true): AugInfo[] {
         }
     }
 
-    const temp = [];
+    const temp: AugInfo[] = [];
     for (const aug of delayed) {
-        if (aug.prereqs.every((req) => [...alreadyHave, ...canGet].includes(req))) {
+        if (aug !== undefined && aug.prereqs.every((req) => [...owned, ...canGet].includes(req))) {
             temp.push(aug);
         }
     }
 
-    if (print) {
-        ns.tprint(`=== Available Augmentations (Prerequisites Installed) ===`);
-        const notified = [];
+    if (print && temp.length > 0) {
+        let shownHeader = false;
+        const header = () => {
+            if (!shownHeader) {
+                ns.tprint(`=== Available Augmentations (Prerequisites Installed) ===`);
+                shownHeader = true;
+            }
+        };
+        const notified: string[] = [];
         for (const augInfo of temp) {
-            if (notified.findIndex((n) => n == augInfo.augName) == -1) {
+            if (augInfo !== undefined && !notified.includes(augInfo.augName)) {
                 const [now, afterSale] = canAfford(ns, augInfo.atPrice);
                 if (now) {
+                    header();
                     ns.tprint(`SUCCESS: Can purchase ${augInfo.augName} from ${augInfo.fromFaction} for $${ns.formatNumber(augInfo.atPrice)}!`);
                 } else if (afterSale) {
+                    header();
                     ns.tprint(`INFO: Could purchase ${augInfo.augName} from ${augInfo.fromFaction} after liquidating up to $${ns.formatNumber(augInfo.atPrice)}...`);
                 } else {
+                    header();
                     ns.tprint(`WARN: Additional funds required to purchase ${augInfo.augName} from ${augInfo.fromFaction} at base price of $${ns.formatNumber(augInfo.atPrice)}...`);
                 }
                 notified.push(augInfo.augName);
@@ -149,7 +164,12 @@ function listAvail(ns: NS, print = true, includeNeuro = true): AugInfo[] {
 
     ret.push(...uniqSort(temp, augSort, augEq));
     // any further requirements cannot be met without forcing a sub-par ordering
-    return ret;
+
+    if (print && ret.filter((x) => x != undefined).length == 0) {
+        ns.tprint(`WARN: No augmentations can be purchased at this time, try joining more factions or earning more reputation.`);
+    }
+
+    return ret.filter((x) => x !== undefined);
 }
 
 async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price: number, fromFactions: string[]): Promise<string | undefined> {
@@ -243,7 +263,7 @@ export async function main(ns: NS) {
                 if (flags.cities as boolean) {
                     listCities(ns, true);
                 } else {
-                    listAvail(ns, true, true);
+                    listAvail(ns, true, flags.neuro as boolean);
                 }
                 break;
         }

@@ -1,6 +1,7 @@
 import { NS, HacknetNodeConstants } from "@ns";
 import { BUDGET, makePurchase } from './budget';
 import { printWaitingMoney } from "./helper";
+import { formatTime } from "./helper";
 
 export const MAX_RAM = 64;
 export const MAX_LEVEL = 200;
@@ -256,6 +257,9 @@ export async function main(ns: NS) {
         case "cores":
             await boostCores(ns, Number(ns.args[1]) ?? 4);
             return;
+        case "forecast":
+            forecastEarnings(ns);
+            return;
         case "init":
         case "optimize":
         default:
@@ -263,4 +267,48 @@ export async function main(ns: NS) {
             await optimize(ns);
             return;
     }
+}
+
+function forecastEarnings(ns: NS) {
+    const sources = ns.getMoneySources().sinceInstall;
+    const totalSpent = sources.hacknet_expenses;
+
+    let prodRate = 0;
+    let totalProd = 0;
+
+    const numNodes = ns.hacknet.numNodes();
+    for (let i = 0; i < numNodes; i++) {
+        const stats = ns.hacknet.getNodeStats(i);
+        prodRate += stats.production;
+        totalProd += stats.totalProduction;
+    }
+
+    const balance = totalProd + totalSpent;
+    if (balance < 0) {
+        const curtime = ns.getTimeSinceLastAug();
+        const delta = Math.abs(balance) / prodRate;
+        const beventime = curtime + delta;
+        ns.tprint(`WARN: HackNet currently in deficit by ${ns.formatNumber(balance)}`);
+        ns.tprint(`WARN: Current Aug-Epoch Time:\t ${formatTime(curtime)}`);
+        ns.tprint(`WARN: Break-Even Aug-Epoch Time:\t ${formatTime(beventime)} (after ${formatTime(delta)})`);
+    }
+    ns.tprint(`INFO: Balance will be ${ns.formatNumber(projectAfter(balance, prodRate, 60 * 60))} in 1h`);
+    ns.tprint(`INFO: Balance will be ${ns.formatNumber(projectAfter(balance, prodRate, 6 * 60 * 60))} in 6h`);
+    ns.tprint(`INFO: Balance will be ${ns.formatNumber(projectAfter(balance, prodRate, 12 * 60 * 60))} in 12h`);
+    ns.tprint(`INFO: Balance will be ${ns.formatNumber(projectAfter(balance, prodRate, 24 * 60 * 60))} in 24h`);
+
+    ns.tprint(`INFO: Balance will be +$1m in ${formatTime(projectUntilBalance(balance, prodRate, 1_000_000))}`);
+    ns.tprint(`INFO: Balance will be +$10m in ${formatTime(projectUntilBalance(balance, prodRate, 10_000_000))}`);
+    ns.tprint(`INFO: Balance will be +$100m in ${formatTime(projectUntilBalance(balance, prodRate, 100_000_000))}`);
+    ns.tprint(`INFO: Balance will be +$1b in ${formatTime(projectUntilBalance(balance, prodRate, 1_000_000_000))}`);
+}
+
+function projectAfter(startingBalance: number, growRate: number, elapsed: number): number {
+    return startingBalance + (growRate * elapsed);
+}
+
+function projectUntilBalance(startingBalance: number, growRate: number, targetBalance: number): number {
+    if (startingBalance >= targetBalance) return 0;
+
+    return Math.ceil((targetBalance - startingBalance) / growRate);
 }

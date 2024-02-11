@@ -148,3 +148,20 @@ export function printWaitingMoney(ns: NS, moneyAvailable: number, moneyNeeded: n
     if (moneyAvailable < moneyNeeded)
         ns.print(`Waiting for money to ${verb}: $${ns.formatNumber(moneyAvailable)}/$${ns.formatNumber(moneyNeeded)} (${ns.formatPercent(moneyAvailable / moneyNeeded)}, Need $${ns.formatNumber(moneyNeeded - moneyAvailable)} more)`);
 }
+
+export function formatTime(seconds: number): string {
+    const s = Math.ceil(seconds);
+    if (s < M) {
+        return `${s}s`;
+    } else if (s < H) {
+        return `${Math.floor(s / M)}m, ${s % M}s`;
+    } else if (seconds < D) {
+        return `${Math.floor(s / H)}h ${Math.floor((s % H) / M)}m ${(s % M)}s`;
+    } else {
+        return `${Math.floor(s / D)}d ${Math.floor((s % D) / H)}h ${Math.floor((s % H) / M)}m ${(s % M)}s`;
+    }
+}
+
+export const D = 86400;
+export const H = 3600;
+export const M = 60;

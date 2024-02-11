@@ -54,7 +54,7 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
     }
     const startedWorking = ns.singularity.createProgram(script);
     if (startedWorking) {
-        while (!ns.fileExists(script, "home")) {
+        while (!haveScript(ns, script)) {
             const work = getWork(ns);
             if (work === null || work.type !== "CREATE_PROGRAM") {
                 return false;
@@ -67,9 +67,13 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
     }
 }
 
+export function haveScript(ns: NS, script: `${ScriptFile}` | ScriptFile): boolean {
+    return ns.fileExists(script, "home");
+}
+
 
 export async function getScript(ns: NS, which: `${ScriptFile}`, forceTor = false) {
-    if (ns.fileExists(which, "home")) {
+    if (haveScript(ns, which)) {
         return;
     }
     if (!forceTor) {
