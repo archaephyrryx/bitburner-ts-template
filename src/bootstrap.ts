@@ -84,6 +84,7 @@ export async function main(ns: NS): Promise<void> {
     runOnce(ns, "jobber.js");
     runOnce(ns, "budget.js");
     runOnce(ns, "factoid.js", "--verbose");
+    runOnce(ns, "bong.js");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);

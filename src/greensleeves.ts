@@ -249,7 +249,6 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
 }
 
 async function initiateFaction(ns: NS, count: number) {
-    ns.tail();
     const canAssign: number[] = [];
     const infos = getCompanyInfo(ns, MegacorpNames);
 
@@ -349,7 +348,7 @@ function getFactionsByPriority(ns: NS, table: FactionRepProgress[], limit = -1) 
     }
 }
 function setSleeveToFactionWork(ns: NS, sleeveIx: number, factionName: string): boolean {
-    const types = ["hacking", "field", "security"];
+    const types = ["field", "hacking", "security"];
     for (const workType of types) {
         if (ns.sleeve.setToFactionWork(sleeveIx, factionName, workType as FactionWorkType)) {
             return true;
