@@ -21,8 +21,9 @@ export async function main(ns: NS) {
 async function hackingGang(ns: NS, autoAscend = false) {
     for (; ;) {
         const gangInfo = ns.gang.getGangInformation();
+        const members = ns.gang.getMemberNames();
 
-        for (const member of ns.gang.getMemberNames()) {
+        for (const member of members) {
             const info = ns.gang.getMemberInformation(member);
             if (info.hack > 100) {
                 if (gangInfo.wantedLevel < WANTED_LOW_TIDE) {
@@ -48,6 +49,10 @@ async function hackingGang(ns: NS, autoAscend = false) {
                     }
                 }
             }
+        }
+
+        if (gangInfo.respect >= gangInfo.respectForNextRecruit) {
+            ns.gang.recruitMember(`member-${members.length}`)
         }
 
         await ns.gang.nextUpdate();
