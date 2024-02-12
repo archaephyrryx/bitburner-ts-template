@@ -194,7 +194,7 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
 
 async function buyAvail(ns: NS, neuro: boolean) {
     outer: for (; ;) {
-        const remaining = listAvail(ns, false, false).filter((x) => x ?? false);
+        const remaining = listAvail(ns, false, false).filter((x) => (x ?? false) && canAfford(ns, x.atPrice * 2)[1]);
         if (remaining.length == 0) {
             break outer;
         }
@@ -208,7 +208,7 @@ async function buyAvail(ns: NS, neuro: boolean) {
                 continue inner;
             } else {
                 ns.tprint(`ERROR: Something went wrong in budget semaphore, or ${augInfo.augName} can no longer be purchased...`);
-                break inner;
+                continue inner;
             }
         }
     }

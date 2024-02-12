@@ -153,17 +153,27 @@ async function initiateWork(ns: NS, count: number) {
 
     const infos = getCompanyInfo(ns, availableCorps);
 
-    const byRep = infos.toSorted((a, b) => a.rep - b.rep);
+    const factionLess = infos.filter((info) => !info.hasFaction);
+
+    let selective;
+
+    if (factionLess.length > 0) {
+        selective = factionLess;
+    } else {
+        selective = infos;
+    }
+
+    const byRep = selective.toSorted((a, b) => a.rep - b.rep);
 
     const minRep = byRep[0].corp;
-    const maxRep = byRep[infos.length - 1].corp;
+    const maxRep = byRep[byRep.length - 1].corp;
 
-    const byFavor = infos.toSorted((a, b) => a.favor - b.favor);
+    const byFavor = selective.toSorted((a, b) => a.favor - b.favor);
 
     const minFavor = byFavor[0].corp;
-    const maxFavor = byFavor[infos.length - 1].corp;
+    const maxFavor = byFavor[byRep.length - 1].corp;
 
-    const order = [minRep, maxRep, minFavor, maxFavor];
+    const order = [maxFavor, minFavor, maxRep, minRep];
 
     let priorities: string[] = [];
     for (let i = 0; i < order.length; i++) {
@@ -185,7 +195,7 @@ async function initiateWork(ns: NS, count: number) {
             ns.sleeve.setToCompanyWork(sleeveIx, rest[restIx++].corp as `${CompanyName}`);
         } else {
             ns.tprint(`WARNING: Out of companies to assign to sleeve ${sleeveIx}, falling back on crime...`);
-            ns.sleeve.setToCommitCrime(sleeveIx, "Shoplift");
+            ns.sleeve.setToCommitCrime(sleeveIx, "Homicide");
         }
     }
 }
@@ -318,7 +328,7 @@ async function initiateFaction(ns: NS, count: number) {
             }
         } else {
             ns.tprint(`WARNING: Out of useful factions to assign to sleeve ${sleeveIx}, falling back on crime...`);
-            ns.sleeve.setToCommitCrime(sleeveIx, "Shoplift");
+            ns.sleeve.setToCommitCrime(sleeveIx, "Homicide");
         }
     }
 }
@@ -340,7 +350,7 @@ function getFactionsByPriority(ns: NS, table: FactionRepProgress[], limit = -1) 
         }
         unsorted.push({ factionName, deltaRep });
     }
-    const micros = unsorted.filter((x) => x.deltaRep.length > 0).toSorted((a, b) => a.deltaRep[0] - b.deltaRep[0]);
+    const micros = unsorted.filter((x) => x.deltaRep.length > 0 && x.factionName !== "Shadows of Anarchy").toSorted((a, b) => a.deltaRep[0] - b.deltaRep[0]);
     if (limit >= 0 && micros.length > limit) {
         return micros.slice(0, limit);
     } else {
@@ -348,7 +358,7 @@ function getFactionsByPriority(ns: NS, table: FactionRepProgress[], limit = -1) 
     }
 }
 function setSleeveToFactionWork(ns: NS, sleeveIx: number, factionName: string): boolean {
-    const types = ["field", "hacking", "security"];
+    const types = ["field", "security", "hacking"];
     for (const workType of types) {
         if (ns.sleeve.setToFactionWork(sleeveIx, factionName, workType as FactionWorkType)) {
             return true;

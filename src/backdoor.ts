@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 import { getRoute } from "./findpath";
 import { ScriptFile } from "./scriptfiles";
 
@@ -172,4 +172,8 @@ function portToExploit(value: Port): ScriptFile {
         case 'SQL':
             return ScriptFile.SQLInject;
     }
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    return ["all", ...data.servers];
 }
