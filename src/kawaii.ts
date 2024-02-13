@@ -44,7 +44,7 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focu
                 ns.gang.setMemberTask(member, "Train Hacking");
                 continue;
             } else {
-                if (absPenaltyPercent > WANTED_PENALTY_HIGH_WATERMARK) {
+                if ((autoAscend && gangInfo.wantedLevel > WANTED_LEVEL_LOW_WATERMARK) || (!autoAscend && absPenaltyPercent >= WANTED_PENALTY_HIGH_WATERMARK)) {
                     ns.print(`INFO: Wanted Level Penalty too steep, ${member} now performing task "Ethical Hacking"`);
                     ns.gang.setMemberTask(member, "Ethical Hacking")
                 } else if (res === undefined) {
@@ -55,7 +55,7 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focu
                         ns.gang.setMemberTask(member, "Train Hacking");
                     }
                     continue;
-                } else if (absPenaltyPercent < WANTED_PENALTY_LOW_WATERMARK) {
+                } else if (absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK || gangInfo.wantedLevel == 1) {
                     const myFocus: Focus = focus ?? (["respect", "money"] as Focus[])[Math.floor(Math.random() * 2)];
                     assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
                 } else {
@@ -122,7 +122,7 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
     return [];
 }
 
-const WANTED_PENALTY_LOW_WATERMARK = 5;
+const WANTED_LEVEL_LOW_WATERMARK = 100;
 const WANTED_PENALTY_HIGH_WATERMARK = 10;
 
 const ASCENSION_RATIO = 1.25;
