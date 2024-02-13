@@ -1,6 +1,6 @@
 import { AutocompleteData, NS, ScriptArg } from '@ns';
 
-type OtherSources = { kind: "exclusive", graftable: boolean } | { kind: "factions", numberJoined: number, otherFactions: string[] };
+type OtherSources = { kind: "exclusive", graftable: boolean, fromGang: boolean } | { kind: "factions", numberJoined: number, otherFactions: string[] };
 
 type AugReq = { augName: string, otherSources: OtherSources, reqRep: number };
 
@@ -29,6 +29,8 @@ export function getFactionRepProgress(ns: NS): FactionRepProgress[] {
     const factions = ns.getPlayer().factions;
     const ownedAugs = ns.singularity.getOwnedAugmentations(true);
     const graftableAugs = ns.grafting.getGraftableAugmentations();
+    const gangFaction: string | undefined = (ns.gang.inGang() ? ns.gang.getGangInformation().faction : undefined);
+    const gangAugs: string[] = (gangFaction === undefined ? [] : ns.singularity.getAugmentationsFromFaction(gangFaction));
     const table: FactionRepProgress[] = [];
     outer: for (const factionName of factions) {
         const allAugs = ns.singularity.getAugmentationsFromFaction(factionName);
@@ -49,9 +51,10 @@ export function getFactionRepProgress(ns: NS): FactionRepProgress[] {
 
             let otherSources: OtherSources;
             if (allFactions.length === 1) {
-                if (allFactions[0] === factionName) {
+                if (allFactions[0] === factionName || gangFaction == factionName) {
                     const graftable = graftableAugs.includes(augName);
-                    otherSources = { kind: "exclusive", graftable };
+                    const fromGang = gangAugs.includes(augName);
+                    otherSources = { kind: "exclusive", graftable, fromGang };
                 } else {
                     ns.tprint(`ERROR: [${ns.getScriptName()}]: ${factionName} lists augmentation ${augName} but ${augName} is exclusive to ${allFactions[0]}`);
                     continue inner;
