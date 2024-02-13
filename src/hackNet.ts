@@ -285,7 +285,7 @@ function forecastEarnings(ns: NS) {
 
     const balance = totalProd + totalSpent;
     if (balance < 0) {
-        const curtime = ns.getTimeSinceLastAug();
+        const curtime = ns.getTimeSinceLastAug() / 1000;
         const delta = Math.abs(balance) / prodRate;
         const beventime = curtime + delta;
         ns.tprint(`WARN: HackNet currently in deficit by ${ns.formatNumber(balance)}`);
