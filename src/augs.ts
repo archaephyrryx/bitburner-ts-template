@@ -286,11 +286,12 @@ function listAvailSleeves(ns: NS, print = true): { [k: string]: [number, number[
         ns.tprint(`=== Available Sleeve Augmentations ===`);
         for (const key in augIndex) {
             const [cost, which] = augIndex[key];
+            const canInstall = which.filter((ix) => ns.sleeve.getSleeve(ix).shock === 0);
             const [now, later] = affordableCopies(ns, Math.max(cost, 1));
-            if (now >= which.length) {
-                ns.tprint(`SUCCESS: Can afford to buy all remaining instances of ${key} for sleeves (total cost: $${ns.formatNumber(which.length * cost)})`)
-            } else if (later >= which.length) {
-                ns.tprint(`INFO: Must sell stocks to afford to buy all remaining instances of ${key} for sleeves (total cost: $${ns.formatNumber(which.length * cost)})`)
+            if (now >= canInstall.length) {
+                ns.tprint(`SUCCESS: Can afford to buy all remaining instances of ${key} for sleeves (total cost: $${ns.formatNumber(canInstall.length * cost)})`)
+            } else if (later >= canInstall.length) {
+                ns.tprint(`INFO: Must sell stocks to afford to buy all remaining instances of ${key} for sleeves (total cost: $${ns.formatNumber(canInstall.length * cost)})`)
             } else if (now + later > 0) {
                 ns.tprint(`WARNING: Can afford ${now} copies now, ${later} copies after liquidation, of ${key}: $${ns.formatNumber(now * cost)}, $${ns.formatNumber(later * cost)}`)
             } else {
@@ -313,6 +314,9 @@ async function buyAvailSleeves(ns: NS) {
         inner: for (const augInfo of order) {
             const [augName, [augPrice, whichSleeves]] = augInfo;
             for (let i = 0; i < whichSleeves.length; i++) {
+                if (ns.sleeve.getSleeve(whichSleeves[i]).shock > 0) {
+                    continue;
+                }
                 const id = await BUDGET.request(ns, augPrice);
                 const success = await makePurchase(ns, id, (async (ns: NS) => ns.sleeve.purchaseSleeveAug(whichSleeves[i], augName)));
                 if (success) {

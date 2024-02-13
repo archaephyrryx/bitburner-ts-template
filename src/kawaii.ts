@@ -1,9 +1,11 @@
 import { AutocompleteData, GangGenInfo, GangMemberInfo, NS } from "@ns";
 
+const Names = ["Zer0", "M0nad", "Du0", "Trinity", "Tetra", "Quine", "Hex", "N4N0", "0ctal", "N0N4", "D3c1m4t0r", "L-V", "B4k3r"];
+
 export async function main(ns: NS) {
     ns.disableLog("gang.purchaseEquipment");
     ns.disableLog("gang.setMemberTask");
-    const flags = ns.flags([["ascend", false], ["equip", false]]);
+    const flags = ns.flags([["ascend", false], ["equip", false], ["focus", "money"]]);
     if (!ns.gang.inGang()) {
         ns.tprint("ERROR: Gang Gang Kawaikunai-yo~!")
         ns.exit();
@@ -12,14 +14,14 @@ export async function main(ns: NS) {
     const gangInfo: GangGenInfo = ns.gang.getGangInformation();
 
     if (gangInfo.isHacking) {
-        await hackingGang(ns, flags.ascend as boolean, flags.equip as boolean);
+        await hackingGang(ns, flags.ascend as boolean, flags.equip as boolean, flags.focus as Focus);
     } else {
         ns.tprint("Not configured to automate non-hacking gang.");
         ns.exit();
     }
 }
 
-async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean) {
+async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focus?: Focus) {
     const tasks = ns.gang.getTaskNames();
 
     for (; ;) {
@@ -54,8 +56,8 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean) {
                     }
                     continue;
                 } else if (absPenaltyPercent < WANTED_PENALTY_LOW_WATERMARK) {
-                    const focus: Focus = (["respect", "money"] as Focus[])[Math.floor(Math.random() * 2)];
-                    assignHackingTask(ns, tasks, member, info, gangInfo, focus);
+                    const myFocus: Focus = focus ?? (["respect", "money"] as Focus[])[Math.floor(Math.random() * 2)];
+                    assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
                 } else {
                     ns.print(`INFO: Wanted Level is acceptable, ${member} will continue performing "${info.task}"`)
                 }
@@ -63,7 +65,7 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean) {
                     const stats = ns.gang.getEquipmentStats(equip);
                     if ((stats.hack !== undefined && stats.hack > 0) || (stats.cha !== undefined && stats.cha > 0)) {
                         if (!info.upgrades.includes(equip)) {
-                            if (autoEquip || ns.gang.getEquipmentType(equip) === "Augmentation") {
+                            if (autoEquip) { // || ns.gang.getEquipmentType(equip) === "Augmentation") {
                                 ns.gang.purchaseEquipment(member, equip);
                             }
                         }
@@ -73,7 +75,7 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean) {
         }
 
         if (gangInfo.respect >= gangInfo.respectForNextRecruit) {
-            const name = `member-${members.length}`;
+            const name = (members.length > Names.length) ? `member-${members.length}` : Names[members.length];
             if (ns.gang.recruitMember(name)) {
                 ns.gang.setMemberTask(name, "Train Hacking");
             }
@@ -116,7 +118,7 @@ function assignHackingTask(ns: NS, tasks: string[], memberName: string, memberIn
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["ascend", false], ["equip", false]]);
+    data.flags([["ascend", false], ["equip", false], ["focus", ["money", "respect"]]]);
     return [];
 }
 
