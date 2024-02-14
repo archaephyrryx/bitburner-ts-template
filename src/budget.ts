@@ -1,9 +1,10 @@
 import { NS, ScriptArg, AutocompleteData } from "@ns";
 import { arrayEq } from "./util/arraytools";
+import { printWaitingMoney } from "./helper";
 
 type Id = number;
 
-type BudgetItem = { readonly id: Id, readonly amount: number, readonly pid: number };
+type BudgetItem = { readonly id: Id, readonly amount: number, readonly pid: number, readonly verb?: string };
 
 export class BudgetSemaphore {
     private items: BudgetItem[];
@@ -42,26 +43,38 @@ export class BudgetSemaphore {
      * Async-safe (hopefully) request submission for an unspecified
      * budget item of a specified monetary amount.
      */
-    public async request(ns: NS, amount: number): Promise<Id> {
+    public async request(ns: NS, amount: number, verb?: string): Promise<Id> {
         await this.getLock(ns);
         const id = this.next_id++;
-        this.items.push({ id, amount, pid: ns.pid });
+        this.items.push({ id, amount, pid: ns.pid, verb });
         this.freeLock(ns);
         return id;
     }
 
-    public async until(ns: NS, id: Id): Promise<number> {
+    public async getVerb(ns: NS, id: number): Promise<string | undefined> {
         await this.getLock(ns);
-        let sum = 0;
+        const item = this.items.find((item) => item.id === id);
+        this.freeLock(ns);
+        return item?.verb;
+    }
+
+    public async until(ns: NS, id: Id, forceOrder = true): Promise<[number, number]> {
+        await this.getLock(ns);
+        let before = 0;
+        let at = 0;
         const nItems = this.items.length;
         for (let i = 0; i < nItems; i++) {
-            sum += this.items[i].amount;
-            if (this.items[i].id === id) {
+            const item = this.items[i];
+            if (item.id < id && forceOrder) {
+                before += item.amount;
+            }
+            if (item.id === id) {
+                at = this.items[i].amount;
                 break;
             }
         }
         this.freeLock(ns);
-        return sum;
+        return [before, at];
     }
 
     public async remove(ns: NS, id: Id): Promise<boolean> {
@@ -99,18 +112,24 @@ export class BudgetSemaphore {
 
 export const BUDGET = new BudgetSemaphore();
 
-export async function reserveMoney(ns: NS, amount: number): Promise<Id> {
+export async function reserveMoney(ns: NS, amount: number, verb?: string): Promise<Id> {
     if (amount < 0) {
         throw new Error(`${ns.getScriptName()}: reserveMoney: amount must be greater than zero`);
     }
-    const id = await BUDGET.request(ns, amount);
+    const id = await BUDGET.request(ns, amount, verb);
     return id;
 }
 
-export async function makePurchase<T>(ns: NS, id: Id, f: ((ns: NS) => Promise<T>)): Promise<T> {
+export async function makePurchase<T>(ns: NS, id: Id, f: ((ns: NS) => Promise<T>), respectOrder = true): Promise<T> {
+    ns.disableLog('getServerMoneyAvailable');
     for (; ;) {
-        const targetAmount = await BUDGET.until(ns, id);
-        if (ns.getServerMoneyAvailable("home") >= targetAmount) {
+        const [before, exact] = await BUDGET.until(ns, id, respectOrder);
+        const baseVerb = await BUDGET.getVerb(ns, id) ?? `fulfill #${id}`;
+        const verb = respectOrder ? `${baseVerb} (reserving $${ns.formatNumber(before)})` : baseVerb;
+        const targetAmount = respectOrder ? before + exact : exact;
+        const currentAmount = ns.getServerMoneyAvailable("home");
+        printWaitingMoney(ns, currentAmount, targetAmount, verb);
+        if (currentAmount >= targetAmount) {
             const ret = await f(ns);
             await BUDGET.remove(ns, id);
             return ret;

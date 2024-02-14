@@ -178,7 +178,8 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
         if (myRep < repReq) continue;
 
         const id = await BUDGET.request(ns, price);
-        const ability = canAfford(ns, await BUDGET.until(ns, id));
+        const [before, exact] = await BUDGET.until(ns, id);
+        const ability = canAfford(ns, before + exact);
         if (ability[0] || (ability[1] && await liquidate(ns))) {
             const res = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(faction, augName)));
             if (!res) {
@@ -193,6 +194,7 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
 }
 
 async function buyAvail(ns: NS, neuro: boolean) {
+    ns.disableLog("getServerMoneyAvailable");
     outer: for (; ;) {
         const remaining = listAvail(ns, false, false).filter((x) => (x ?? false) && canAfford(ns, x.atPrice * 2)[1]);
         if (remaining.length == 0) {
@@ -201,7 +203,7 @@ async function buyAvail(ns: NS, neuro: boolean) {
 
         inner: for (const augInfo of remaining) {
             augInfo.atPrice = ns.singularity.getAugmentationPrice(augInfo.augName);
-            const id = await BUDGET.request(ns, augInfo.atPrice);
+            const id = await BUDGET.request(ns, augInfo.atPrice, `purchase ${augInfo.augName}`);
             const success = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(augInfo.fromFaction, augInfo.augName)));
             if (success) {
                 ns.tprint(`SUCCESS: Bought ${augInfo.augName} from ${augInfo.fromFaction} for $${augInfo.atPrice}`);
@@ -318,7 +320,7 @@ async function buyAvailSleeves(ns: NS) {
                     continue;
                 }
                 const id = await BUDGET.request(ns, augPrice);
-                const success = await makePurchase(ns, id, (async (ns: NS) => ns.sleeve.purchaseSleeveAug(whichSleeves[i], augName)));
+                const success = await makePurchase(ns, id, (async (ns: NS) => ns.sleeve.purchaseSleeveAug(whichSleeves[i], augName)), false);
                 if (success) {
                     ns.tprint(`SUCCESS: Bought ${augName} for sleeve ${whichSleeves[i]} for $${augPrice}`);
                     continue inner;

@@ -139,7 +139,7 @@ export async function main(ns: NS): Promise<void> {
     const nextServ = ns.args[0] as typeof coreServers[number] | typeof extraServers[number] | "all" | undefined;
 
     if (nextServ === "all") {
-        const missing = ([...coreServers]).filter((serv) => !isBackdoored(ns, serv));
+        const missing = ([...coreServers, ...extraServers]).filter((serv) => !isBackdoored(ns, serv));
         if (missing.length > 0) {
             for (const serv of missing) {
                 await executeBackdoor(ns, serv);
