@@ -1,12 +1,16 @@
 import { AutocompleteData, NS } from "@ns";
 import { affordableCopies, canAfford } from "./money_helper";
-import { BUDGET, makePurchase } from "./budget";
+import { BUDGET, getAvailMoney, makePurchase } from "./budget";
 import { liquidate } from "./market";
 import { uniqSort } from './util/arraytools';
 import { mimic } from "./util/stringtools";
+import { GraftableAugs } from "./aug.helper";
+import { M, formatTime } from "./helper";
+import { travelTo } from "./faction";
+import { getWork } from "./global";
 
 const NeuroGov = "NeuroFlux Governor" as const;
-const cmds = ["list-avail", "buy-avail", "list-avail-sleeves", "buy-avail-sleeves"];
+const cmds = ["list-avail", "buy-avail", "list-avail-sleeves", "buy-avail-sleeves", "helper"];
 
 enum CityName {
     Aevum = "Aevum",
@@ -64,7 +68,6 @@ function listAvail(ns: NS, print = true, includeNeuro = false): AugInfo[] {
     const canGetRaw: string[] = [];
     const delayed: AugInfo[] = [];
     const delayedRaw: string[] = [];
-
 
     const factions = ns.getPlayer().factions;
 
@@ -245,7 +248,15 @@ export async function main(ns: NS) {
     const flags = ns.flags([
         ["neuro", false],
         ["cities", false],
+        ["graft", []],
     ]);
+
+    if ((flags.graft as string[]).length > 0) {
+        for (const graftAug of flags.graft as string[]) {
+            await graftAugment(ns, graftAug);
+        }
+        return;
+    }
 
     if (typeof ns.args[0] == "string") {
         const cmd = ns.args[0];
@@ -336,6 +347,69 @@ async function buyAvailSleeves(ns: NS) {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["neuro", false], ["cities", false]]);
+    const graftable = (GraftableAugs.live) ? [...GraftableAugs.augs] : [];
+    data.flags([["neuro", false], ["cities", false], ["graft", []]]);
+    if (args.length > 0 && args[0] === "--graft") {
+        return graftable.map((s) => `"${s}"`);
+    }
     return cmds;
+}
+
+async function graftAugment(ns: NS, aug: string) {
+    ns.tail();
+    ns.disableLog('ALL');
+
+    try {
+        const price = ns.grafting.getAugmentationGraftPrice(aug);
+        const time = ns.grafting.getAugmentationGraftTime(aug);
+
+        ns.print(`WARNING: Grafting ${aug} will take ${formatTime(time / 1000)} and cost $${ns.formatNumber(price)}`);
+        const [liquid, unfrozen] = await getAvailMoney(ns);
+        if (unfrozen < price) {
+            if (liquid >= price) {
+                ns.print(`WARNING: Can afford grafting price ${price}, but only by ignoring budget constraints.`);
+                ns.print(`WARNING: Will proceed to graft anyway in 5 seconds...`);
+                await ns.sleep(5000);
+            } else {
+                ns.print(`WARNING: not enough money to graft ${aug}, will skip for now...`);
+                return;
+            }
+        }
+        for (let i = 5; i > 0; i--) {
+            ns.clearLog();
+            ns.print(`WARNING: You have ${i} seconds remaining before grafting will begin automatically!`);
+            await ns.sleep(1000);
+        }
+        if (ns.getPlayer().city !== CityName.NewTokyo) {
+            await travelTo(ns, "New Tokyo");
+        }
+        while (!ns.grafting.graftAugmentation(aug)) {
+            ns.clearLog();
+            ns.print(`WARNING: Unable to start grafting ${aug}, something may have gone wrong.`);
+            ns.print(`INFO: If you believe this is temporary, leave this window open.`);
+            await ns.sleep(M * 1000);
+        }
+        ns.clearLog();
+        const currentTime = Date.now();
+        for (; ;) {
+            const work = getWork(ns);
+            if (work === null || work.type !== 'GRAFTING') {
+                if (ns.singularity.getOwnedAugmentations().includes(aug)) {
+                    ns.tprint(`SUCCESS: Grafted ${aug}`);
+                    return;
+                } else {
+                    ns.print(`WARNING: Stopped working, but augmentation ${aug} was not grafted. If this was not intentional, some script is clobbering grafting.`);
+                    return;
+                }
+            } else {
+                const timeElapsed = Date.now() - currentTime;
+                ns.clearLog();
+                ns.print(`WARN: ${formatTime(timeElapsed / 1000)} elapsed of ${formatTime(time / 1000)} (${ns.formatPercent(timeElapsed / time, 2)})`);
+                await ns.sleep(1000);
+            }
+        }
+    } catch (err) {
+        ns.print(`ERROR: ${aug} does not appear to be a graftable augmentation: ${err}`);
+        return;
+    }
 }

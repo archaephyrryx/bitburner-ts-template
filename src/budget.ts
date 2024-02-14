@@ -174,3 +174,10 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
     data.flags([['purge', false]]);
     return [];
 }
+
+export async function getAvailMoney(ns: NS): Promise<[number, number]> {
+    ns.disableLog('getServerMoneyAvailable');
+    const total = ns.getServerMoneyAvailable("home");
+    const reserved = await BUDGET.getTotal(ns);
+    return [total, Math.max(total - reserved, 0)];
+}

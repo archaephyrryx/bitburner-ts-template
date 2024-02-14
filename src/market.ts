@@ -1,5 +1,6 @@
 import { AutocompleteData, NS } from '@ns';
 import { aggregateStockInfo } from './stock_helper';
+import { getAvailMoney } from './budget';
 
 const expectedCommission = 100000;
 
@@ -47,8 +48,8 @@ export function randomizedStockOrder(ns: NS): string[] {
     return randomizedStocks;
 }
 
-function getBudget(ns: NS, liquidity = 0.10): number {
-    const liquid = ns.getServerMoneyAvailable("home");
+function getBudget(ns: NS, spendable: number, liquidity = 0.10): number {
+    const liquid = spendable;
     const stockInfo = aggregateStockInfo(ns);
     const principalValue = stockInfo.principal;
     const currentValue = stockInfo.current;
@@ -76,7 +77,8 @@ export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     let portfolioSize = globalStocks.length;
     let cycle = 0;
-    let totalBudget = getBudget(ns);
+    const spendable = (await getAvailMoney(ns))[1];
+    let totalBudget = getBudget(ns, spendable);
     if (forceSell) {
         const randomOrderStocks = randomizedStockOrder(ns);
         for (const stock of randomOrderStocks) {
@@ -108,9 +110,9 @@ export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
     }
     for (; ; cycle++) {
         ns.printf("====== AutoTrader cycle %d ======", cycle);
-        const moneyAvailable = ns.getServerMoneyAvailable("home");
+        const [moneyAvailable, moneySpendable] = await getAvailMoney(ns);
         const oldBudget = totalBudget;
-        totalBudget = getBudget(ns);
+        totalBudget = getBudget(ns, moneySpendable);
         ns.printf("Budget: %d ==> %d (%0.02f%% ==> %0.02f%% of available money)", oldBudget, totalBudget, oldBudget / moneyAvailable * 100, totalBudget / moneyAvailable * 100);
         if (totalBudget <= 0) {
             canBuy = false;
