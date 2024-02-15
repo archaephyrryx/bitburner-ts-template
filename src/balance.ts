@@ -3,8 +3,9 @@ import { NS, MoneySources } from "@ns";
 export async function main(ns: NS) {
     const sources = ns.getMoneySources();
     ns.tprint(`Since Last Install ($): ${ns.formatNumber(sources.sinceInstall.total)}`);
-    const { total, augmentations, casino, corporation, crime, gang, hacking, hacknet, hacknet_expenses, servers, sleeves, stock, work, infiltration, hospitalization } = sources.sinceInstall;
+    const { total, augmentations, bladeburner, casino, corporation, crime, gang, hacking, hacknet, hacknet_expenses, servers, sleeves, stock, work, infiltration, hospitalization } = sources.sinceInstall;
     showValuePercent(ns, "Augmentations", augmentations, total);
+    showValuePercent(ns, "Bladeburner", bladeburner, total);
     showValuePercent(ns, "Casino", casino, total);
     showValuePercent(ns, "Corporation", corporation, total);
     showValuePercent(ns, "Crime", crime, total);

@@ -71,21 +71,22 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
 
+    runOnce(ns, "hackNet.js", "init");
     runOnce(ns, "dispatch.js");
-    runOnce(ns, "monitor.js");
+    runOnce(ns, "kawaii.js", "--focus", "money", "--equip", "--ascend");
     if (ns.stock.has4SDataTIXAPI()) {
         runOnce(ns, "market.js", "autotrade");
     }
     runOnce(ns, "custom-stats.js");
-    runOnce(ns, "hackNet.js", "init");
-    runOnce(ns, "server.js", "init");
-    runOnce(ns, "greensleeves.js");
-    runOnce(ns, "backdoor.js", "all");
-    runOnce(ns, "jobber.js");
     runOnce(ns, "budget.js");
-    runOnce(ns, "factoid.js", "--verbose");
     runOnce(ns, "bong.js");
-    runOnce(ns, "kawaii.js", "--focus", "money", "--equip");
+    runOnce(ns, "jobber.js");
+    runOnce(ns, "factoid.js", "--verbose");
+    runOnce(ns, "greensleeves.js", "crime");
+    runOnce(ns, "server.js", "init");
+    runOnce(ns, "backdoor.js", "all");
+    runOnce(ns, "aug.helper.js");
+    runOnce(ns, "monitor.js");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);

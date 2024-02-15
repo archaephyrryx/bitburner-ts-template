@@ -64,6 +64,9 @@ async function spawnJoin(ns: NS, script: string, ...args: string[]): Promise<boo
 }
 
 async function execGetScript(ns: NS, scriptfile: `${ScriptFile}`): Promise<boolean> {
+    if (ns.fileExists(scriptfile, "home")) {
+        return true;
+    }
     const ret = await spawnJoin(ns, "scriptfiles.js", scriptfile as string);
     if (ret && !ns.fileExists(scriptfile, "home")) {
         ns.tprint(`ERROR: ran script to acquire ${scriptfile}, but process terminated before file was obtained!`);

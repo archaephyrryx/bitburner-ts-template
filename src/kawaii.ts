@@ -5,7 +5,7 @@ const Names = ["Zer0", "M0nad", "Du0", "Trinity", "Tetra", "Quine", "Hex", "N4N0
 export async function main(ns: NS) {
     ns.disableLog("gang.purchaseEquipment");
     ns.disableLog("gang.setMemberTask");
-    const flags = ns.flags([["ascend", false], ["equip", false], ["focus", "money"]]);
+    const flags = ns.flags([["ascend", false], ["equip", false], ["focus", "random"]]);
     if (!ns.gang.inGang()) {
         ns.tprint("ERROR: Gang Gang Kawaikunai-yo~!")
         ns.exit();
@@ -21,7 +21,7 @@ export async function main(ns: NS) {
     }
 }
 
-async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focus?: Focus) {
+async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focus: Focus) {
     const tasks = ns.gang.getTaskNames();
 
     for (; ;) {
@@ -56,16 +56,16 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focu
                     }
                     continue;
                 } else if (absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK || gangInfo.wantedLevel == 1) {
-                    const myFocus: Focus = focus ?? (["respect", "money"] as Focus[])[Math.floor(Math.random() * 2)];
+                    const myFocus: Focus = (focus === 'random') ? (["respect", "money", "power"] as Focus[])[Math.floor(Math.random() * 3)] : focus;
                     assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
                 } else {
                     ns.print(`INFO: Wanted Level is acceptable, ${member} will continue performing "${info.task}"`)
                 }
                 for (const equip of ns.gang.getEquipmentNames()) {
                     const stats = ns.gang.getEquipmentStats(equip);
-                    if ((stats.hack !== undefined && stats.hack > 0) || (stats.cha !== undefined && stats.cha > 0)) {
+                    if ((stats.hack !== undefined && stats.hack > 0) || (stats.cha !== undefined && stats.cha > 0) || focus == 'power') {
                         if (!info.upgrades.includes(equip)) {
-                            if (autoEquip) { // || ns.gang.getEquipmentType(equip) === "Augmentation") {
+                            if (autoEquip || ns.gang.getEquipmentType(equip) === "Augmentation") {
                                 ns.gang.purchaseEquipment(member, equip);
                             }
                         }
@@ -85,21 +85,29 @@ async function hackingGang(ns: NS, autoAscend: boolean, autoEquip: boolean, focu
     }
 }
 
-type Focus = 'money' | 'respect';
+type Focus = 'money' | 'respect' | 'power' | 'random';
 
 function assignHackingTask(ns: NS, tasks: string[], memberName: string, memberInfo: GangMemberInfo, gangInfo: GangGenInfo, focus: Focus = 'money') {
     let bestTask: string | undefined = undefined;
     let bestTaskRespGain = -1;
     let bestTaskMoneyGain = -1;
 
-    for (const task of tasks) {
-        const stats = ns.gang.getTaskStats(task);
-        const respGain = ns.formulas.gang.respectGain(gangInfo, memberInfo, stats);
-        const moneyGain = ns.formulas.gang.moneyGain(gangInfo, memberInfo, stats);
-        if ((respGain > bestTaskRespGain && focus === 'respect') || (moneyGain > bestTaskMoneyGain && focus === 'money')) {
-            bestTask = task;
-            bestTaskRespGain = respGain;
-            bestTaskMoneyGain = moneyGain;
+    if (focus == 'power') {
+        if (memberInfo.agi < 50 || memberInfo.def < 50 || memberInfo.str < 50 || memberInfo.dex < 50) {
+            bestTask = "Train Combat";
+        } else {
+            bestTask = "Territory Warfare";
+        }
+    } else {
+        for (const task of tasks) {
+            const stats = ns.gang.getTaskStats(task);
+            const respGain = ns.formulas.gang.respectGain(gangInfo, memberInfo, stats);
+            const moneyGain = ns.formulas.gang.moneyGain(gangInfo, memberInfo, stats);
+            if ((respGain > bestTaskRespGain && focus === 'respect') || (moneyGain > bestTaskMoneyGain && focus === 'money')) {
+                bestTask = task;
+                bestTaskRespGain = respGain;
+                bestTaskMoneyGain = moneyGain;
+            }
         }
     }
 
@@ -118,7 +126,7 @@ function assignHackingTask(ns: NS, tasks: string[], memberName: string, memberIn
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["ascend", false], ["equip", false], ["focus", ["money", "respect"]]]);
+    data.flags([["ascend", false], ["equip", false], ["focus", "random"]]);
     return [];
 }
 

@@ -316,24 +316,27 @@ function listAvailSleeves(ns: NS, print = true): { [k: string]: [number, number[
 }
 
 async function buyAvailSleeves(ns: NS) {
+    ns.disableLog('sleep');
     outer: for (; ;) {
         const remaining = listAvailSleeves(ns, false);
-        if (Object.entries(remaining).length === 0) {
+        if (Object.entries(remaining).filter(([_a, [price, which]]) => canAfford(ns, price)[1]).length === 0) {
             break outer;
         }
 
-        const order = uniqSort(Object.entries(remaining), ([_a, [a, __a]], [_b, [b, __b]]) => a - b);
+        const order = uniqSort(Object.entries(remaining), ([_a, [a, __a]], [_b, [b, __b]]) => a - b).filter(([_a, [price, which]]) => canAfford(ns, price * which.length)[1]);
 
         inner: for (const augInfo of order) {
             const [augName, [augPrice, whichSleeves]] = augInfo;
             for (let i = 0; i < whichSleeves.length; i++) {
                 if (ns.sleeve.getSleeve(whichSleeves[i]).shock > 0) {
+                    await ns.sleep(10);
                     continue;
                 }
-                const id = await BUDGET.request(ns, augPrice);
+                const id = await BUDGET.request(ns, augPrice, `purchase '${augName}' for Sleeve #${whichSleeves[i]}`);
                 const success = await makePurchase(ns, id, (async (ns: NS) => ns.sleeve.purchaseSleeveAug(whichSleeves[i], augName)), false);
                 if (success) {
                     ns.tprint(`SUCCESS: Bought ${augName} for sleeve ${whichSleeves[i]} for $${augPrice}`);
+                    await ns.sleep(100);
                     continue inner;
                 } else {
                     ns.tprint(`ERROR: Something went wrong in budget semaphore, or ${augInfo} can no longer be purchased for sleeve ${whichSleeves[i]}...`);
@@ -341,6 +344,7 @@ async function buyAvailSleeves(ns: NS) {
                 }
             }
         }
+        await ns.sleep(10);
     }
     return;
 }
