@@ -121,7 +121,7 @@ async function initiateWork(ns: NS, count: number) {
     }
 }
 
-function shouldWorkFaction(faction: string, progress: FactionRepProgress[]): boolean {
+export function shouldWorkFaction(faction: string, progress: FactionRepProgress[]): boolean {
     const tmp = findProgress(progress, faction);
     if (tmp === undefined) {
         return true;

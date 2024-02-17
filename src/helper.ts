@@ -1,4 +1,4 @@
-import { NS } from "@ns";
+import { BitNodeMultipliers, NS } from "@ns";
 
 export type ExecParams =
     {
@@ -165,3 +165,26 @@ export function formatTime(seconds: number): string {
 export const D = 86400;
 export const H = 3600;
 export const M = 60;
+
+export function isOnBitnode(ns: NS, n: number): boolean {
+    const currentMults = ns.getBitNodeMultipliers();
+    for (let i = 1; i <= 3; ++i) {
+        const nMults = ns.getBitNodeMultipliers(n, i);
+        if (equalMultipliers(currentMults, nMults)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function equalMultipliers(currentMults: BitNodeMultipliers, nMults: BitNodeMultipliers) {
+    for (const entry of Object.entries(currentMults)) {
+        const [key, value] = entry;
+        if (nMults[key as keyof BitNodeMultipliers] === value) {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}

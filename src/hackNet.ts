@@ -1,6 +1,6 @@
 import { NS, HacknetNodeConstants } from "@ns";
 import { BUDGET, makePurchase } from './budget';
-import { printWaitingMoney } from "./helper";
+import { isOnBitnode, printWaitingMoney } from "./helper";
 import { formatTime } from "./helper";
 
 export const MAX_RAM = 64;
@@ -240,6 +240,21 @@ export async function optimize(ns: NS) {
 export async function main(ns: NS) {
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
+
+    let hacknetServers = isOnBitnode(ns, 9);
+    if (!hacknetServers) {
+        const srcfiles = ns.singularity.getOwnedSourceFiles();
+        for (const srcfile of srcfiles) {
+            if (srcfile.n == 9 && srcfile.lvl >= 1) {
+                hacknetServers = true;
+                break;
+            }
+        }
+    }
+    if (hacknetServers) {
+        ns.atExit(() => ns.exec("hashnet.js", "home", {}, "--autoSpend"));
+        ns.exit();
+    }
 
     switch (ns.args[0]) {
         case "max":

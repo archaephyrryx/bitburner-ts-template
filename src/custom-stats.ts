@@ -1,6 +1,7 @@
 import { NS } from "@ns";
 import { explore } from "./graph";
 import { StockInfo, aggregateStockInfo } from "./stock_helper";
+import { hashCapacityProduction } from "./hashnet";
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {
@@ -35,6 +36,10 @@ export async function main(ns: NS) {
                 }
             }
             // TODO: Add more neat stuff
+            const nHashes = ns.hacknet.numHashes();
+            const [capacity, prod] = hashCapacityProduction(ns, ns.hacknet.numNodes());
+            headers.push("Hashes");
+            values.push(`${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity, 0)} (${ns.formatNumber(prod, 3)} h/s)`);
 
             // Now drop it into the placeholder elements
             if (hook0 !== null) hook0.innerText = headers.join(" \n");

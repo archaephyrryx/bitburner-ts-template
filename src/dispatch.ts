@@ -1,4 +1,4 @@
-import { AutocompleteData, NS } from "@ns";
+import { AutocompleteData, NS, ScriptArg } from "@ns";
 import { getGraph } from "census";
 import { NodeInfo } from "global";
 import { canHack } from "./helper";
@@ -524,7 +524,7 @@ async function hideLogs(ns: NS) {
     ns.disableLog("sleep");
 }
 
-function decideTarget(ns: NS): [string, boolean] {
+function decideTarget(ns: NS, args: ScriptArg | string[]): [string, boolean] {
     function getTargets(): Target[] {
         const targets = [];
         let nNonStock = 0;
@@ -543,7 +543,7 @@ function decideTarget(ns: NS): [string, boolean] {
 
     let targets;
     let userpick;
-    const cmdLineTarget = ns.args[0];
+    const cmdLineTarget = (args as string[])[0];
     if (typeof cmdLineTarget === "string") {
         targets = [{ server: cmdLineTarget, stock: shouldStock(ns, cmdLineTarget) }]
         userpick = true;
@@ -557,13 +557,14 @@ function decideTarget(ns: NS): [string, boolean] {
     return [target, userpick];
 }
 
-async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], userPicked = false): Promise<string | -1> {
+async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], args: string[] | ScriptArg, userPicked = false, runOnHacknet = false): Promise<string | -1> {
     ns.write("target.txt", target, "w");
     ns.write("dispatch-pid.txt", ns.pid.toString() ?? "0", "w");
 
     const minSec = ns.getServerMinSecurityLevel(target);
 
     const pool = new ThreadPool(ns);
+    graph = filterGraph(graph, runOnHacknet)
     pool.init(ns, graph);
     ns.tprint(`Initialized pool with ${pool.size()} threads across ${pool.knownServers().length} servers`);
     const hgw = await getHGW(ns, target, pool);
@@ -683,14 +684,14 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], userPicked
         }
 
         await ns.sleep(1000);
-        graph = getGraph(ns);
+        graph = filterGraph(getGraph(ns), runOnHacknet);
         const currentSec = ns.getServerSecurityLevel(target);
         const currentMoney = ns.getServerMoneyAvailable(target);
         ns.clearLog();
         ns.print(`${target} Snapshot: Security = ${currentSec.toFixed(2)} (Min: ${minSec}), Money = $${ns.formatNumber(currentMoney)}`);
         pool.update(ns, graph);
         if (!userPicked) {
-            const [nextTarget] = decideTarget(ns);
+            const [nextTarget] = decideTarget(ns, args);
             if (nextTarget !== target) {
                 return nextTarget;
             }
@@ -700,14 +701,16 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], userPicked
 
 
 export async function main(ns: NS): Promise<void> {
+    const flags = ns.flags([["hacknet", false]]);
     hideLogs(ns);
+
     const graph = renew(ns);
-    const [initTarget, userPicked] = decideTarget(ns);
+    const [initTarget, userPicked] = decideTarget(ns, flags._);
     ns.tail();
 
     let target = initTarget;
     for (; ;) {
-        const newTarget = await spawnTarget(ns, target, graph, userPicked);
+        const newTarget = await spawnTarget(ns, target, graph, flags._, userPicked, flags.hacknet as boolean);
         if (newTarget === -1) {
             return;
         } else if (newTarget !== target) {
@@ -720,6 +723,7 @@ export async function main(ns: NS): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]): string[] {
+    data.flags([["hacknet", false]]);
     return [...data.servers]
 }
 
@@ -758,4 +762,12 @@ function pickTarget(targets: Target[]): Target {
         return stockTargets[0];
     }
     return targets[0];
+}
+
+function filterGraph(graph: NodeInfo[], keepHacknet = false): NodeInfo[] {
+    if (keepHacknet) {
+        return graph;
+    } else {
+        return graph.filter((info) => !info.name.startsWith("hacknet-server"));
+    }
 }
