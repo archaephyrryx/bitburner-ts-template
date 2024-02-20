@@ -2,11 +2,11 @@ import { NS, CompanyName } from "@ns";
 import { uniqSort } from "./util/arraytools";
 import { getFactionRepProgress, FactionRepProgress } from "./factoid";
 import { getCompanyInfo, MegacorpNames } from './global';
+import { universityToCity } from "./global";
+import { fallbackAction, fallbackCrime, moveToCity } from './sleeve-man.consts';
 
-const SYNCHRO_THRESHOLD = 50;
+const SYNCHRO_THRESHOLD = 75;
 const SHOCK_THRESHOLD = 90;
-
-const fallbackCrime = "Homicide";
 
 export async function main(ns: NS) {
     const nSleeves = ns.sleeve.getNumSleeves();
@@ -115,7 +115,29 @@ async function initiateWork(ns: NS, count: number) {
             if (ns.sleeve.getSleeve(sleeveIx).shock > 0) {
                 ns.sleeve.setToShockRecovery(sleeveIx);
             } else {
-                ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime);
+                switch (fallbackAction.type) {
+                    case "CLASS":
+                        if (fallbackAction.location !== undefined) {
+                            const dest = universityToCity(fallbackAction.location);
+                            if (dest === undefined) {
+                                ns.tprint(`ERROR: ${fallbackAction.location} is not a known university!`);
+                            } else if (!moveToCity(ns, sleeveIx, dest)) {
+                                ns.tprint(`ERROR: Unable to get sleeve ${sleeveIx} to travel to dest!`);
+                            } else if (!ns.sleeve.setToUniversityCourse(sleeveIx, fallbackAction.location, fallbackAction.classType ?? "Computer Science")) {
+                                ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}...`)
+                            } else {
+                                ns.print(`SUCCESS: Set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}!`)
+                                break;
+                            }
+                            ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime);
+                            break;
+                        } else {
+                            continue;
+                        }
+                    default:
+                        ns.tprint(`WARNING: unhandled logic for fallback action ${fallbackAction}`);
+                        break;
+                }
             }
         }
     }
@@ -130,9 +152,7 @@ export function shouldWorkFaction(faction: string, progress: FactionRepProgress[
     const sortedAugs = augReqs.toSorted((a, b) => a.reqRep - b.reqRep);
     const needsMore = sortedAugs.filter((augReq) => augReq.reqRep > myRep);
 
-    if (needsMore.length === 0) {
-        return false;
-    }
+    if (needsMore.length === 0) return false;
 
     for (const aug of needsMore) {
         switch (aug.otherSources.kind) {

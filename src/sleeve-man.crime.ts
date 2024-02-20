@@ -37,8 +37,8 @@ async function initiateCrime(ns: NS, count: number, crime: `${CrimeType}` = "Sho
                 case 'BLADEBURNER':
                 case 'INFILTRATE':
                 case 'COMPANY':
-                case 'CLASS':
                     break;
+                case 'CLASS':
                 case 'CRIME':
                     canAssign.push(i);
                     break;

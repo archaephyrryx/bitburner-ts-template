@@ -1,14 +1,6 @@
 import { NS } from '@ns';
 import { M } from './helper';
-
-enum CityName {
-    Aevum = "Aevum",
-    Chongqing = "Chongqing",
-    Sector12 = "Sector-12",
-    NewTokyo = "New Tokyo",
-    Ishima = "Ishima",
-    Volhaven = "Volhaven",
-}
+import { Cities, CityName } from './global';
 
 export async function main(ns: NS) {
     await everyNSeconds(ns, [
@@ -34,7 +26,7 @@ export async function everyNSeconds(ns: NS, commands: [string, string[]][], nSec
 export function joinAllFactions(ns: NS) {
     const outstanding = ns.singularity.checkFactionInvitations();
     for (const faction of outstanding) {
-        if (!Object.values(CityName).includes(faction as CityName)) {
+        if (!Cities.includes(faction)) {
             ns.singularity.joinFaction(faction);
         }
     }

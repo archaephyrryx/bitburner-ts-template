@@ -8,20 +8,10 @@ import { GraftableAugs } from "./aug.helper";
 import { M, formatTime } from "./helper";
 import { travelTo } from "./faction";
 import { getWork } from "./global";
+import { Cities, CityName } from "./global";
 
 const NeuroGov = "NeuroFlux Governor" as const;
 const cmds = ["list-avail", "buy-avail", "list-avail-sleeves", "buy-avail-sleeves", "helper"];
-
-enum CityName {
-    Aevum = "Aevum",
-    Chongqing = "Chongqing",
-    Sector12 = "Sector-12",
-    NewTokyo = "New Tokyo",
-    Ishima = "Ishima",
-    Volhaven = "Volhaven",
-}
-
-const Cities: string[] = [...Object.values(CityName)];
 
 type AugInfo = { augName: string, fromFaction: string, atPrice: number, prereqs: string[] };
 

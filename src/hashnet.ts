@@ -34,12 +34,16 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false) {
         }
 
         ns.clearLog();
-        ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${capacity} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"})`)
+        ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity)} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"})`)
 
         const additionalPrice = ns.hacknet.getPurchaseNodeCost();
 
-        while (canAfford(ns, additionalPrice)[0] && ns.hacknet.purchaseNode() !== -1) {
-            continue;
+        if (!sellOnly) {
+            while (canAfford(ns, additionalPrice)[0]) {
+                if (ns.hacknet.purchaseNode() == -1) {
+                    break;
+                }
+            }
         }
 
         for (let i = 0; i < nServers; i++) {
@@ -69,10 +73,6 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false) {
 //         const fillTime = timeUntilMax(prod, nHashes, capacity);
 
 //         const items = getItems(ns, nServers);
-
-
-
-
 //         await ns.sleep(200);
 //     }
 // }
@@ -80,11 +80,13 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false) {
 export function hashCapacityProduction(ns: NS, numNodes: number): [number, number] {
     let totalCap = 0;
     let totalProd = 0;
+
     for (let i = 0; i < numNodes; i++) {
         const stats = ns.hacknet.getNodeStats(i);
         totalCap += stats.hashCapacity ?? 0;
         totalProd += stats.production;
     }
+
     return [totalCap, totalProd];
 }
 
