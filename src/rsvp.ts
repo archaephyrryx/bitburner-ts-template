@@ -1,7 +1,5 @@
 import { NS, PlayerRequirement, Skills } from '@ns';
-
-const red = "\u001b[31m";
-const reset = "\u001b[0m";
+import { red, reset } from './helper';
 
 /**
  * Shows the raw requirements for getting a faction invitation

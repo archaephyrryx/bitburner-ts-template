@@ -2,9 +2,7 @@ import { NS, CompanyName, Player } from "@ns";
 import { mimicPad } from "./util/stringtools";
 import { CompanyInfo, getCompanyInfo, MegacorpNames } from "./global";
 import { H, M } from './helper';
-
-const bold = "\u001b[01m";
-const reset = "\u001b[0m";
+import { bold, reset } from "./helper";
 
 export type Who = "self" | number;
 

@@ -1,4 +1,5 @@
 import { AutocompleteData, GangGenInfo, GangMemberInfo, NS } from "@ns";
+import { bold, reset } from "./helper";
 
 const Names = ["Zer0", "M0nad", "Du0", "Trinity", "Tetra", "Quine", "Hex", "N4N0", "0ctal", "N0N4", "D3c1m4t0r", "L-V", "B4k3r"];
 
@@ -48,87 +49,74 @@ async function hackingGang(
         for (const member of members) {
             const info = ns.gang.getMemberInformation(member);
             const res = ns.gang.getAscensionResult(member);
-            if (
-                (autoAscend || info.upgrades.length === 0) &&
-                res !== undefined &&
-                res.hack >= ASCENSION_RATIO
-            ) {
-                ns.gang.ascendMember(member);
+            if (res !== undefined && (res.hack >= ASCENSION_RATIO && res.cha >= ASCENSION_RATIO)) {
+                if (autoAscend && (info.upgrades.length === 0 || autoEquip)) {
+                    ns.gang.ascendMember(member);
+                    ns.print(
+                        `SUCCESS: Ascended ${member}, now setting to task "Train Hacking"`
+                    );
+                    ns.gang.setMemberTask(member, "Train Hacking");
+                    continue;
+                } else {
+                    ns.print(`${bold}INFO: Ascension candidate ${member} will continue task ${info.task} until manually ascended...${reset}`);
+                    continue;
+                }
+            }
+            if (absPenaltyPercent >= WANTED_PENALTY_HIGH_WATERMARK) {
+                if (gangInfo.respectGainRate < gangInfo.wantedLevelGainRate) {
+                    assignHackingTask(ns, tasks, member, info, gangInfo, "respect");
+                } else {
+                    ns.gang.setMemberTask(member, "Ethical Hacking");
+                }
+            } else if (res === undefined) {
                 ns.print(
-                    `SUCCESS: Ascended ${member}, now setting to task "Train Charisma"`
+                    `INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`
                 );
-                ns.gang.setMemberTask(member, "Train Charisma");
+                if (info.cha_exp * HACK_CHA_RATIO < info.hack_exp) {
+                    ns.gang.setMemberTask(member, "Train Charisma");
+                } else {
+                    ns.gang.setMemberTask(member, "Train Hacking");
+                }
                 continue;
             } else if (
-                (autoAscend || info.upgrades.length === 0) &&
-                res !== undefined &&
-                res.cha >= ASCENSION_RATIO
+                gangInfo.wantedLevel > 1 &&
+                ns.gang.getMemberInformation(member).task == "Ethical Hacking"
             ) {
-                ns.gang.ascendMember(member);
                 ns.print(
-                    `SUCCESS: Ascended ${member}, now setting to task "Train Hacking"`
+                    `INFO: Wanted Level Penalty above minimum, ${member} will continue performing task "Ethical Hacking"`
                 );
-                ns.gang.setMemberTask(member, "Train Hacking");
                 continue;
+            } else if (
+                absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK ||
+                gangInfo.wantedLevel == 1
+            ) {
+                const myFocus: Focus =
+                    focus === "random"
+                        ? (["respect", "money", "power"] as Focus[])[
+                        Math.floor(Math.random() * 3)
+                        ]
+                        : focus;
+                assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
             } else {
+                ns.print(
+                    `INFO: Wanted Level is acceptable, ${member} will continue performing "${info.task}"`
+                );
+            }
+            for (const equip of ns.gang.getEquipmentNames()) {
+                const stats = ns.gang.getEquipmentStats(equip);
                 if (
-                    (autoAscend && gangInfo.wantedLevel > WANTED_LEVEL_LOW_WATERMARK) ||
-                    (!autoAscend && absPenaltyPercent >= WANTED_PENALTY_HIGH_WATERMARK)
+                    (stats.hack !== undefined && stats.hack > 0) ||
+                    (stats.cha !== undefined && stats.cha > 0) ||
+                    focus == "power" ||
+                    focus == "random"
                 ) {
-                    ns.print(
-                        `INFO: Wanted Level Penalty too steep, ${member} now performing task "Ethical Hacking"`
-                    );
-                    ns.gang.setMemberTask(member, "Ethical Hacking");
-                } else if (res === undefined) {
-                    ns.print(
-                        `INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not profitable`
-                    );
-                    if (info.cha_exp * HACK_CHA_RATIO < info.hack_exp) {
-                        ns.gang.setMemberTask(member, "Train Charisma");
-                    } else {
-                        ns.gang.setMemberTask(member, "Train Hacking");
-                    }
-                    continue;
-                } else if (
-                    gangInfo.wantedLevel > 1 &&
-                    ns.gang.getMemberInformation(member).task == "Ethical Hacking"
-                ) {
-                    ns.print(
-                        `INFO: Wanted Level Penalty above minimum, ${member} will continue performing task "Ethical Hacking"`
-                    );
-                    continue;
-                } else if (
-                    absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK ||
-                    gangInfo.wantedLevel == 1
-                ) {
-                    const myFocus: Focus =
-                        focus === "random"
-                            ? (["respect", "money", "power"] as Focus[])[
-                            Math.floor(Math.random() * 3)
-                            ]
-                            : focus;
-                    assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
-                } else {
-                    ns.print(
-                        `INFO: Wanted Level is acceptable, ${member} will continue performing "${info.task}"`
-                    );
-                }
-                for (const equip of ns.gang.getEquipmentNames()) {
-                    const stats = ns.gang.getEquipmentStats(equip);
-                    if (
-                        (stats.hack !== undefined && stats.hack > 0) ||
-                        (stats.cha !== undefined && stats.cha > 0) ||
-                        focus == "power" ||
-                        focus == "random"
-                    ) {
-                        if (!info.upgrades.includes(equip)) {
-                            if (
-                                autoEquip ||
-                                (ns.gang.getEquipmentType(equip) === "Augmentation" &&
-                                    autoAugment)
-                            ) {
-                                ns.gang.purchaseEquipment(member, equip);
-                            }
+                    if (!info.upgrades.includes(equip)) {
+                        if (
+                            autoEquip ||
+                            (ns.gang.getEquipmentType(equip) === "Augmentation" &&
+                                autoAugment)
+                        ) {
+                            ns.gang.purchaseEquipment(member, equip);
                         }
                     }
                 }
