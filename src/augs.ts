@@ -169,6 +169,7 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
     for (const faction of fromFactions) {
         const myRep = ns.singularity.getFactionRep(faction);
         if (myRep < repReq) continue;
+        if (ns.gang.inGang() && ns.gang.getGangInformation().faction == faction) continue;
 
         const id = await BUDGET.request(ns, price);
         const [before, exact] = await BUDGET.until(ns, id);
@@ -186,7 +187,7 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
     return undefined;
 }
 
-async function buyAvail(ns: NS, neuro: boolean) {
+async function buyAvail(ns: NS, neuro: boolean, dryRun = false) {
     ns.disableLog("getServerMoneyAvailable");
     outer: for (; ;) {
         const remaining = listAvail(ns, false, false).filter((x) => (x ?? false) && canAfford(ns, x.atPrice * 2)[1]);
@@ -196,16 +197,22 @@ async function buyAvail(ns: NS, neuro: boolean) {
 
         inner: for (const augInfo of remaining) {
             augInfo.atPrice = ns.singularity.getAugmentationPrice(augInfo.augName);
-            const id = await BUDGET.request(ns, augInfo.atPrice, `purchase ${augInfo.augName}`);
-            const success = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(augInfo.fromFaction, augInfo.augName)));
-            if (success) {
-                ns.tprint(`SUCCESS: Bought ${augInfo.augName} from ${augInfo.fromFaction} for $${augInfo.atPrice}`);
+            if (dryRun) {
+                ns.tprint(`INFO: Would buy ${augInfo.augName} from ${augInfo.fromFaction} at estimated (unadjusted) price of $${ns.formatNumber(augInfo.atPrice)}`)
                 continue inner;
             } else {
-                ns.tprint(`ERROR: Something went wrong in budget semaphore, or ${augInfo.augName} can no longer be purchased...`);
-                continue inner;
+                const id = await BUDGET.request(ns, augInfo.atPrice, `purchase ${augInfo.augName}`);
+                const success = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(augInfo.fromFaction, augInfo.augName)));
+                if (success) {
+                    ns.tprint(`SUCCESS: Bought ${augInfo.augName} from ${augInfo.fromFaction} for $${ns.formatNumber(augInfo.atPrice)}`);
+                    continue inner;
+                } else {
+                    ns.tprint(`ERROR: Something went wrong in budget semaphore, or ${augInfo.augName} can no longer be purchased...`);
+                    continue inner;
+                }
             }
         }
+        if (dryRun) break outer;
     }
 
     if (neuro) {
@@ -239,6 +246,7 @@ export async function main(ns: NS) {
         ["neuro", false],
         ["cities", false],
         ["graft", []],
+        ["dryRun", false],
     ]);
 
     if ((flags.graft as string[]).length > 0) {
@@ -252,7 +260,7 @@ export async function main(ns: NS) {
         const cmd = ns.args[0];
         switch (cmd) {
             case "buy-avail":
-                await buyAvail(ns, flags.neuro as boolean);
+                await buyAvail(ns, flags.neuro as boolean, flags.dryRun as boolean);
                 listAvail(ns);
                 break;
             case "list-avail-sleeves":

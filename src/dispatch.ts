@@ -561,8 +561,6 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], args: stri
     ns.write("target.txt", target, "w");
     ns.write("dispatch-pid.txt", ns.pid.toString() ?? "0", "w");
 
-    const minSec = ns.getServerMinSecurityLevel(target);
-
     const pool = new ThreadPool(ns);
     graph = filterGraph(graph, runOnHacknet)
     pool.init(ns, graph);
@@ -570,6 +568,7 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], args: stri
     const hgw = await getHGW(ns, target, pool);
 
     for (; ;) {
+        const minSec = ns.getServerMinSecurityLevel(target);
         const headCount = pool.headCount();
         ns.print(`Threads: ${headCount.hackThreads} hack, ${headCount.growThreads} grow, ${headCount.weakenThreads} weaken`);
         const available = headCount.maxThreads - (headCount.hackThreads + headCount.growThreads + headCount.weakenThreads);
@@ -688,7 +687,7 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], args: stri
         const currentSec = ns.getServerSecurityLevel(target);
         const currentMoney = ns.getServerMoneyAvailable(target);
         ns.clearLog();
-        ns.print(`${target} Snapshot: Security = ${currentSec.toFixed(2)} (Min: ${minSec}), Money = $${ns.formatNumber(currentMoney)}`);
+        ns.print(`${target} Snapshot: Security = ${currentSec.toFixed(2)} (Min: ${minSec.toFixed(2)}), Money = $${ns.formatNumber(currentMoney)}`);
         pool.update(ns, graph);
         if (!userPicked) {
             const [nextTarget] = decideTarget(ns, args);

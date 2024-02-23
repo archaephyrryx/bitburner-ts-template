@@ -93,7 +93,7 @@ export async function main(ns: NS) {
 
         ns.clearLog();
         const infos = getCompanyInfo(ns, MegacorpNames);
-        const maxRep = infos.toSorted((a, b) => b.rep - a.rep)[0].rep;
+        const maxRep = infos.filter((info) => !(info.hasFaction)).toSorted((a, b) => b.rep - a.rep)[0].rep;
         // wait 1 minute before cycling to avoid clobbering previous reassignments; will reassign every AssignmentCooldownMinutes cycles
         for (const info of infos) {
             if (info.hasFaction) {

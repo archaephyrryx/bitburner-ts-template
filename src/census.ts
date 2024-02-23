@@ -23,7 +23,7 @@ function usedRam(ns: NS): RamInfo {
             const usedRam = ns.getServerUsedRam(server.name);
             if (server.name === "home") {
                 totalRam.home += usedRam;
-            } else if (server.name.startsWith("pserv")) {
+            } else if (server.name.startsWith("pserv") || server.name.startsWith("hacknet-server")) {
                 totalRam.purchased += usedRam;
             } else {
                 totalRam.rooted += usedRam;
@@ -41,7 +41,7 @@ function controlledRam(ns: NS): RamInfo {
             const maxRam = ns.getServerMaxRam(server.name);
             if (server.name === "home") {
                 totalRam.home += maxRam;
-            } else if (server.name.startsWith("pserv")) {
+            } else if (server.name.startsWith("pserv") || server.name.startsWith("hacknet-server")) {
                 totalRam.purchased += maxRam;
             } else {
                 totalRam.rooted += maxRam;

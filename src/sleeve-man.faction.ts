@@ -72,7 +72,7 @@ async function initiateFaction(ns: NS, count: number) {
     }
 
     if (canAssign.length === 0) {
-        ns.tprint(`WARNING: No free sleeves to engage in company work...`);
+        ns.print(`WARNING: No free sleeves to engage in company work...`);
         return;
     }
 

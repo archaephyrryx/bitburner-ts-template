@@ -71,9 +71,9 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
 
-    runOnce(ns, "hacknet.js", "--autoSpend");
+    runOnce(ns, "hashnet.js", "--autoSpend");
     runOnce(ns, "dispatch.js");
-    runOnce(ns, "kawaii.js", "--focus", "money", "--equip", "--ascend");
+    runOnce(ns, "kawaii.js", "--focus", "money");
     if (ns.stock.has4SDataTIXAPI()) {
         runOnce(ns, "market.js", "autotrade");
     }
