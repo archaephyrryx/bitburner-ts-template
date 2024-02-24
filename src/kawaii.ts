@@ -191,7 +191,6 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
     return [];
 }
 
-const WANTED_LEVEL_LOW_WATERMARK = 50;
 const WANTED_PENALTY_HIGH_WATERMARK = 10;
 
 const ASCENSION_RATIO = 1.25;
