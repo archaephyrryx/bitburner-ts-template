@@ -10,18 +10,18 @@ const HASH_FOR_MONEY = 4;
 // type Yield = { kind: 'production', amount: number } | { kind: 'capacity', amount: number }
 
 export async function main(ns: NS) {
-    const flags = ns.flags([["autoSpend", false], ["sellOnly", false]]);
+    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false]]);
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
     ns.tail();
 
 
-    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean);
+    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean);
     // await optimize(ns);
     // await spendHashes(ns);
 }
 
-async function crawl(ns: NS, autoSpend = false, sellOnly = false) {
+async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false) {
     for (; ;) {
         const nServers = ns.hacknet.numNodes();
         const nHashes = ns.hacknet.numHashes();
@@ -54,14 +54,14 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false) {
                     ns.toast(`Upgraded hacknet-server-${i} RAM.`, "success", 1000);
                 } else if (ns.hacknet.upgradeCore(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} cores.`, "success", 1000);
-                } else if (ns.hacknet.upgradeCache(i)) {
+                } else if (upgradeCache && ns.hacknet.upgradeCache(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} cache.`, "success", 1000);
                 }
             }
             const stats = ns.hacknet.getNodeStats(i);
             ns.print(`${stats.name}: ${ns.formatNumber(stats.production, 3)} h/s\t ${stats.level.toString().padStart(3, " ")} | ${((stats.ramUsed ?? 0) == 0) ? `${ns.formatRam(stats.ram)}` : `${ns.formatRam(stats.ram)} (used: ${ns.formatRam(stats.ramUsed ?? 0)})`} | ${stats.cores} ${stats.cache === undefined ? "" : `| ${stats.cache} (${ns.formatNumber(stats.hashCapacity ?? 0)})`}`);
         }
-        await ns.sleep(100);
+        await ns.sleep(200);
     }
 }
 
@@ -120,6 +120,6 @@ export function hashCapacityProduction(ns: NS, numNodes: number): [number, numbe
 // }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["sellOnly", false], ["autoSpend", false]]);
+    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false]]);
     return [];
 }
