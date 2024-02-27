@@ -5,10 +5,12 @@ type GridPathData = Array<number>;
 export function gridpathsSolver(ns: NS, cc: CodingContract, file: string, host: string | undefined): boolean {
     const data = cc.getData(file, host);
     const answer = solve_gridpaths(data);
-    if (cc.attempt(answer, file, host)) {
+    const res = cc.attempt(answer, file, host);
+    if (res != "") {
+        ns.tprint(`SUCCESS: Solved ${file}: ${res}`);
         return true;
     } else {
-        ns.tprint(`WARNING: Script-Based solver failed to solve GridPaths problem, please ensure contract type is correct and logic is correctly implemented`);
+        ns.tprint(`WARNING: Script-Based solver failed to solve ${cc.getContractType(file, host)}, please ensure contract type is correct and logic is correctly implemented`);
         return false;
     }
 }

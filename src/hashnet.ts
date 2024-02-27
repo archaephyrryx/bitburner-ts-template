@@ -1,5 +1,4 @@
 import { AutocompleteData, NS } from '@ns';
-import { canAfford } from "./money_helper";
 import { H, bold, reset } from './helper';
 
 const MONEY_PER_HASH = 250_000;
@@ -20,29 +19,27 @@ export async function main(ns: NS) {
 
 
     await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean);
-    // await optimize(ns);
-    // await spendHashes(ns);
 }
 
 async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false) {
     for (; ;) {
         const nServers = ns.hacknet.numNodes();
-        const nHashes = ns.hacknet.numHashes();
+        let nHashes = ns.hacknet.numHashes();
 
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const [capacity, prod] = hashCapacityProduction(ns, nServers);
 
         while (nHashes >= ((autoSpend || sellOnly) ? HASH_FOR_MONEY : capacity / 2) && ns.hacknet.spendHashes("Sell for Money")) {
-            continue;
+            nHashes = ns.hacknet.numHashes();
         }
 
         ns.clearLog();
         ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity)} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"} | ${ns.formatNumber(prod)} h/s)`)
 
 
-        if (!sellOnly) {
+        if (!sellOnly && autoSpend) {
             let additionalPrice = ns.hacknet.getPurchaseNodeCost();
-            while (canAfford(ns, additionalPrice)[0]) {
+            while (ns.getServerMoneyAvailable("home") >= additionalPrice) {
                 if (ns.hacknet.purchaseNode() == -1) {
                     break;
                 } else {
@@ -53,7 +50,7 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
 
         for (let i = 0; i < nServers; i++) {
             let atMax = false;
-            if (!sellOnly) {
+            if (!sellOnly && autoSpend) {
                 const shouldLvl = shouldUpgradeLevel(ns, i);
                 const shouldRam = shouldUpgradeRam(ns, i);
                 const shouldCore = shouldUpgradeCores(ns, i);
@@ -68,6 +65,13 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
                 } else if (!shouldLvl && !shouldRam && !shouldCore) {
                     atMax = true;
                 }
+            } else {
+                const shouldLvl = shouldUpgradeLevel(ns, i);
+                const shouldRam = shouldUpgradeRam(ns, i);
+                const shouldCore = shouldUpgradeCores(ns, i);
+                if (!shouldLvl && !shouldRam && !shouldCore) {
+                    atMax = true;
+                }
             }
             const stats = ns.hacknet.getNodeStats(i);
             ns.print(`${atMax ? bold : ""}${stats.name}: ${ns.formatNumber(stats.production, 3)} h/s\t ${stats.level.toString().padStart(3, " ")} | ${((stats.ramUsed ?? 0) == 0) ? `${ns.formatRam(stats.ram)}` : `${ns.formatRam(stats.ram)} (used: ${ns.formatRam(stats.ramUsed ?? 0)})`} | ${stats.cores} ${stats.cache === undefined ? "" : `| ${stats.cache} (${ns.formatNumber(stats.hashCapacity ?? 0)})`}${atMax ? reset : ""}`);
@@ -75,18 +79,6 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
         await ns.sleep(200);
     }
 }
-
-// export async function optimize(ns: NS) {
-
-//     for (; ;) {
-//         const nHashes = ns.hacknet.numHashes();
-
-//         const fillTime = timeUntilMax(prod, nHashes, capacity);
-
-//         const items = getItems(ns, nServers);
-//         await ns.sleep(200);
-//     }
-// }
 
 export function hashCapacityProduction(ns: NS, numNodes: number): [number, number] {
     let totalCap = 0;
@@ -100,35 +92,6 @@ export function hashCapacityProduction(ns: NS, numNodes: number): [number, numbe
 
     return [totalCap, totalProd];
 }
-
-// async function spendHashes(ns: NS) {
-//     ns.tprint(`WARN: No logic for spending hashes programmatically other than selling...`);
-//     for (; ;) {
-//         if (ns.hacknet.spendHashes("Sell for Money")) {
-//             await ns.sleep(10);
-//         } else {
-//             ns.sleep(1000);
-//         }
-//     }
-// }
-
-// function timeUntilMax(rate: number, current: number, capacity: number): number {
-//     if (current >= capacity) {
-//         return 0;
-//     }
-//     if (rate <= 0) {
-//         throw new Error("Rate of growth is non-positive");
-//     }
-//     return (capacity - current) / rate;
-// }
-
-// function getItems(ns: NS, nServers: number): Item[] {
-//     const items: Item[] = [];
-
-//     for (let i = 0; i < nServers; i++) {
-
-//     }
-// }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
     data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false]]);
@@ -156,7 +119,6 @@ function shouldUpgradeLevel(ns: NS, nodeIx: number): boolean {
         return false;
     }
 }
-
 
 function shouldUpgradeRam(ns: NS, nodeIx: number): boolean {
     const plyr = ns.getPlayer();

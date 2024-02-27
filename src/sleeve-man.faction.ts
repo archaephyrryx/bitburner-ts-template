@@ -94,39 +94,41 @@ async function initiateFaction(ns: NS, count: number) {
         } else {
             if (ns.sleeve.getSleeve(sleeveIx).shock > 0) {
                 ns.sleeve.setToShockRecovery(sleeveIx);
-            } switch (fallbackAction.type) {
-                case "CLASS":
-                    {
-                        if (fallbackAction.location !== undefined) {
-                            const dest = universityToCity(fallbackAction.location);
-                            if (dest === undefined) {
-                                ns.tprint(`ERROR: ${fallbackAction.location} is not a known university!`);
-                            } else if (!moveToCity(ns, sleeveIx, dest)) {
-                                ns.tprint(`ERROR: Unable to get sleeve ${sleeveIx} to travel to dest!`);
-                            } else if (!ns.sleeve.setToUniversityCourse(sleeveIx, fallbackAction.location, fallbackAction.classType ?? "Computer Science")) {
-                                ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}...`)
-                            } else {
-                                ns.print(`SUCCESS: Set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}!`)
+            } else {
+                switch (fallbackAction.type) {
+                    case "CLASS":
+                        {
+                            if (fallbackAction.location !== undefined) {
+                                const dest = universityToCity(fallbackAction.location);
+                                if (dest === undefined) {
+                                    ns.tprint(`ERROR: ${fallbackAction.location} is not a known university!`);
+                                } else if (!moveToCity(ns, sleeveIx, dest)) {
+                                    ns.tprint(`ERROR: Unable to get sleeve ${sleeveIx} to travel to dest!`);
+                                } else if (!ns.sleeve.setToUniversityCourse(sleeveIx, fallbackAction.location, fallbackAction.classType ?? "Computer Science")) {
+                                    ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}...`)
+                                } else {
+                                    ns.print(`SUCCESS: Set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}!`)
+                                    break;
+                                }
+                                ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime);
                                 break;
+                            } else {
+                                continue;
                             }
-                            ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime);
-                            break;
-                        } else {
-                            continue;
                         }
-                    }
-                case "CRIME":
-                    if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackAction.crimeType ?? "Shoplift")) {
-                        if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime)) {
-                            ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to commit either specified or fallback crime`);
-                        } else {
-                            ns.tprint(`WARNING: Falling back from specified crime ${fallbackAction.crimeType} to ${fallbackCrime}...`);
+                    case "CRIME":
+                        if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackAction.crimeType ?? "Shoplift")) {
+                            if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime)) {
+                                ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to commit either specified or fallback crime`);
+                            } else {
+                                ns.tprint(`WARNING: Falling back from specified crime ${fallbackAction.crimeType} to ${fallbackCrime}...`);
+                            }
                         }
-                    }
-                    break;
-                default:
-                    ns.tprint(`WARNING: unhandled logic for fallback action ${fallbackAction}`);
-                    break;
+                        break;
+                    default:
+                        ns.tprint(`WARNING: unhandled logic for fallback action ${fallbackAction}`);
+                        break;
+                }
             }
         }
     }

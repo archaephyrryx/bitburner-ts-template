@@ -2,6 +2,7 @@ import { NS } from "@ns";
 
 const watchableScripts = [
     "moneyCount.js",
+    "balance.js",
 ]
 
 
@@ -12,6 +13,7 @@ function canRun(ns: NS, script: string, hostname: string) {
 }
 
 export async function main(ns: NS) {
+    ns.tail();
     const script = ns.args[0] ?? "moneyCount.js";
     if (typeof script === "string") {
         if (!watchableScripts.includes(script)) {

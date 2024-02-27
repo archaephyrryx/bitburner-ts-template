@@ -63,7 +63,7 @@ async function hackingGang(
                 }
             }
             if (absPenaltyPercent >= WANTED_PENALTY_HIGH_WATERMARK) {
-                if (gangInfo.respectGainRate < gangInfo.wantedLevelGainRate) {
+                if (info.earnedRespect <= (gangInfo.respect / (members.length + 1))) {
                     assignHackingTask(ns, tasks, member, info, gangInfo, "respect");
                 } else {
                     ns.gang.setMemberTask(member, "Ethical Hacking");
@@ -79,23 +79,14 @@ async function hackingGang(
                 }
                 continue;
             } else if (
-                gangInfo.wantedLevel > 1 &&
-                ns.gang.getMemberInformation(member).task == "Ethical Hacking"
-            ) {
-                ns.print(
-                    `INFO: Wanted Level Penalty above minimum, ${member} will continue performing task "Ethical Hacking"`
-                );
-                continue;
-            } else if (
                 absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK ||
                 gangInfo.wantedLevel == 1
             ) {
+
                 const myFocus: Focus =
-                    focus === "random"
-                        ? (["respect", "money", "power"] as Focus[])[
-                        Math.floor(Math.random() * 3)
-                        ]
-                        : focus;
+                    (info.earnedRespect <= (gangInfo.respect / (members.length + 1))) ? "respect" :
+                        focus === "random" ? (["respect", "money", "power"] as Focus[])[Math.floor(Math.random() * 3)]
+                            : focus;
                 assignHackingTask(ns, tasks, member, info, gangInfo, myFocus);
             } else {
                 ns.print(
