@@ -171,10 +171,10 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
         if (myRep < repReq) continue;
         if (ns.gang.inGang() && ns.gang.getGangInformation().faction == faction) continue;
 
-        const id = await BUDGET.request(ns, price);
+        const id = await BUDGET.request(ns, price, "purchase next NeuroGov augmentation");
         const [before, exact] = await BUDGET.until(ns, id);
         const ability = canAfford(ns, before + exact);
-        if (ability[0] || (ability[1] && await liquidate(ns))) {
+        if (ability[0] || (ability[1] && await liquidate(ns)) || (ns.isRunning("sunset.js", "home") && canAfford(ns, exact)[0])) {
             const res = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(faction, augName)));
             if (!res) {
                 ns.tprint(`ERROR: unable to purchase ${augName} from ${faction} for $${ns.formatNumber(price)}...`);

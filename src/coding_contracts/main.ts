@@ -1,33 +1,46 @@
-import { CodingContract, NS } from '@ns';
+import { AutocompleteData, CodingContract, NS } from '@ns';
 import { mimic } from '/util/stringtools';
 import { gridpathsSolver } from 'coding_contracts/gridpaths';
 import { ipAddrSolver } from 'coding_contracts/ipaddr';
 import { Solver } from 'coding_contracts/common';
 import { lzSolver } from 'coding_contracts/lz';
+import { arrayJumpSolver } from 'coding_contracts/arrayjump';
 
-export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string): boolean {
-    if (cc.getNumTriesRemaining(filename, hostMachine) > 1) {
-        if (solverFn(ns, cc, filename, hostMachine)) {
-            return true;
-        } else {
-            ns.tprint(`INFO: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) attempted but failed, ${cc.getNumTriesRemaining(filename, hostMachine)} tries remaining...`);
-        }
-    } else {
-        ns.tprint(`WARNING: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) has only 1 try remaining, will not attempt script-based solution.`);
+export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
+    const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);
+
+    if (triesRemaining <= 1 && !force) {
+        ns.tprint(`ERROR: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) has only 1 try remaining, will not attempt script-based solution.`);
+        return false;
     }
-    return false;
+
+    if (triesRemaining <= 1) {
+        ns.tprint(`WARNING: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) has only 1 try remaining, but will be attempted due to --force flag`);
+    }
+    if (solverFn(ns, cc, filename, hostMachine)) {
+        return true;
+    } else {
+        const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);
+        if (triesRemaining > 0) {
+            ns.tprint(`INFO: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) attempted but failed, ${cc.getNumTriesRemaining(filename, hostMachine)} tries remaining...`);
+        } else {
+            ns.tprint(`WARNING: ${filename} (${cc.getContractType(filename, hostMachine)} @ ${hostMachine}) attempted but failed, and is now destroyed!`);
+        }
+        return false;
+    }
 }
 
-export function solve_contract(ns: NS, cc: CodingContract, filename: string, hostMachine: string): boolean {
+export function solve_contract(ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const ccType = cc.getContractType(filename, hostMachine);
-    ns.tprint(`INFO: Coding Contract Type: ${ccType}`);
     switch (ccType) {
-        case 'Unique Paths in a Grid I':
-            return attemptSolution(gridpathsSolver, ns, cc, filename, hostMachine);
-        case "Generate IP Addresses":
-            return attemptSolution(ipAddrSolver, ns, cc, filename, hostMachine);
+        case "Array Jumping Game II":
+            return attemptSolution(arrayJumpSolver, ns, cc, filename, hostMachine, force);
         case "Compression II: LZ Decompression":
-            return attemptSolution(lzSolver, ns, cc, filename, hostMachine);
+            return attemptSolution(lzSolver, ns, cc, filename, hostMachine, force);
+        case "Generate IP Addresses":
+            return attemptSolution(ipAddrSolver, ns, cc, filename, hostMachine, force);
+        case "Unique Paths in a Grid I":
+            return attemptSolution(gridpathsSolver, ns, cc, filename, hostMachine, force);
         default:
             ns.tprint(`WARNING: No auto-solver implemented for contract-type '${ccType}' (${filename} on ${hostMachine})`);
             break;
@@ -54,6 +67,7 @@ export function list_servers(ns: NS): string[] {
 }
 
 export async function main(ns: NS): Promise<void> {
+    const flags = ns.flags([['force', false]]);
     const servers = list_servers(ns);
     const hostnames = servers.filter(s => ns.ls(s).some(f => f.endsWith(".cct")))
     if (hostnames.length == 0) {
@@ -76,9 +90,14 @@ export async function main(ns: NS): Promise<void> {
                 continue;
             } else {
                 for (const contract of contracts) {
-                    solve_contract(ns, cc, contract, hostname);
+                    solve_contract(ns, cc, contract, hostname, flags.force as boolean);
                 }
             }
         }
     }
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    data.flags([['force', false]]);
+    return [];
 }
