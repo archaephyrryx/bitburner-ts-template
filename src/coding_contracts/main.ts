@@ -4,7 +4,9 @@ import { gridpathsSolver } from 'coding_contracts/gridpaths';
 import { ipAddrSolver } from 'coding_contracts/ipaddr';
 import { Solver } from 'coding_contracts/common';
 import { lzSolver } from 'coding_contracts/lz';
-import { arrayJumpSolver } from 'coding_contracts/arrayjump';
+import { arrayJumpSolver, arrayJumpSolverBinary } from 'coding_contracts/arrayjump';
+import { lpfSolver } from 'coding_contracts/lpf';
+import { subarraySumSolver } from 'coding_contracts/subarraysum';
 
 export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);
@@ -33,12 +35,18 @@ export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, fi
 export function solve_contract(ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const ccType = cc.getContractType(filename, hostMachine);
     switch (ccType) {
+        case "Array Jumping Game":
+            return attemptSolution(arrayJumpSolverBinary, ns, cc, filename, hostMachine, force);
         case "Array Jumping Game II":
             return attemptSolution(arrayJumpSolver, ns, cc, filename, hostMachine, force);
         case "Compression II: LZ Decompression":
             return attemptSolution(lzSolver, ns, cc, filename, hostMachine, force);
+        case "Find Largest Prime Factor":
+            return attemptSolution(lpfSolver, ns, cc, filename, hostMachine, force);
         case "Generate IP Addresses":
             return attemptSolution(ipAddrSolver, ns, cc, filename, hostMachine, force);
+        case "Subarray with Maximum Sum":
+            return attemptSolution(subarraySumSolver, ns, cc, filename, hostMachine, force);
         case "Unique Paths in a Grid I":
             return attemptSolution(gridpathsSolver, ns, cc, filename, hostMachine, force);
         default:

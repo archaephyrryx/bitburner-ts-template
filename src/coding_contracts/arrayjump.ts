@@ -2,6 +2,18 @@ import { CodingContract, CodingContractData, NS } from '@ns';
 
 type ArrayJumpData = Array<number>;
 
+export function arrayJumpSolverBinary(ns: NS, cc: CodingContract, file: string, host: string | undefined): boolean {
+    const data = cc.getData(file, host);
+    const answer = solve_arrayjump(data, true);
+    const res = cc.attempt(answer, file, host);
+    if (res != "") {
+        ns.tprint(`SUCCESS: Solved ${file}: ${res}`);
+        return true;
+    } else {
+        ns.tprint(`WARNING: Script-Based solver failed to solve ${cc.getContractType(file, host)}, please ensure contract type is correct and logic is correctly implemented`);
+        return false;
+    }
+}
 export function arrayJumpSolver(ns: NS, cc: CodingContract, file: string, host: string | undefined): boolean {
     const data = cc.getData(file, host);
     const answer = solve_arrayjump(data);
@@ -27,7 +39,7 @@ function sanitize(data: unknown): asserts data is ArrayJumpData {
     throw new Error(`Invalid ArrayJump contract data: ${JSON.stringify(data)}`);
 }
 
-export function solve_arrayjump(dat: CodingContractData): number {
+export function solve_arrayjump(dat: CodingContractData, binary = false): number {
     sanitize(dat);
     const graph = new Graph(dat.length);
     dat.forEach((jumpdist, ix) => {
@@ -37,7 +49,7 @@ export function solve_arrayjump(dat: CodingContractData): number {
         }
     })
     const res = graph.dijkstra();
-    return res;
+    return (binary && res > 0) ? 1 : res;
 }
 
 class Graph {

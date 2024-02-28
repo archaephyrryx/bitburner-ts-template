@@ -12,16 +12,16 @@ const TIMEFRAME = 4 * H;
 // type Yield = { kind: 'production', amount: number } | { kind: 'capacity', amount: number }
 
 export async function main(ns: NS) {
-    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false]]);
+    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5]]);
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
     ns.tail();
 
 
-    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean);
+    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean, flags.keepFraction as number);
 }
 
-async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false) {
+async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false, keepFraction: number) {
     for (; ;) {
         const nServers = ns.hacknet.numNodes();
         let nHashes = ns.hacknet.numHashes();
@@ -29,7 +29,7 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const [capacity, prod] = hashCapacityProduction(ns, nServers);
 
-        while (nHashes >= ((autoSpend || sellOnly) ? HASH_FOR_MONEY : capacity / 2) && ns.hacknet.spendHashes("Sell for Money")) {
+        while (nHashes >= (sellOnly ? HASH_FOR_MONEY : Math.max(HASH_FOR_MONEY, capacity * keepFraction)) && ns.hacknet.spendHashes("Sell for Money")) {
             nHashes = ns.hacknet.numHashes();
         }
 
@@ -94,7 +94,7 @@ export function hashCapacityProduction(ns: NS, numNodes: number): [number, numbe
 }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false]]);
+    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5]]);
     return [];
 }
 
