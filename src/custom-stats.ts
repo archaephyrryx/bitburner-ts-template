@@ -40,6 +40,8 @@ export async function main(ns: NS) {
             const [capacity, prod] = hashCapacityProduction(ns, ns.hacknet.numNodes());
             headers.push("Hashes");
             values.push(`${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity, 0)} (${ns.formatNumber(prod, 3)} h/s)`);
+            headers.push("Karma");
+            values.push(`${ns.formatNumber(ns.heart.break())}`)
 
             // Now drop it into the placeholder elements
             if (hook0 !== null) hook0.innerText = headers.join(" \n");

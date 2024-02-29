@@ -117,6 +117,11 @@ async function initiateFaction(ns: NS, count: number) {
                             }
                         }
                     case "CRIME":
+                        // eslint-disable-next-line no-case-declarations
+                        const currentTask = ns.sleeve.getTask(sleeveIx);
+                        if (currentTask != null && currentTask.type == "CRIME" && currentTask.crimeType == fallbackAction.crimeType) {
+                            continue;
+                        }
                         if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackAction.crimeType ?? "Shoplift")) {
                             if (!ns.sleeve.setToCommitCrime(sleeveIx, fallbackCrime)) {
                                 ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to commit either specified or fallback crime`);

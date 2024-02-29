@@ -4,8 +4,8 @@ import { Cities, CityName } from './global';
 
 export async function main(ns: NS) {
     await everyNSeconds(ns, [
-        ["greensleeves.js", ["faction"]],
-        ["greensleeves.js", ["work"]],
+        ["sleeve-man.faction.js", []],
+        ["sleeve-man.company.js", []],
     ], M);
 }
 

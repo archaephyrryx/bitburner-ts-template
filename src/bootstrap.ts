@@ -57,7 +57,7 @@ export async function autoCrack(ns: NS, server: string, portsHint?: number): Pro
  * @param args {string[]}
  */
 export function runOnce(ns: NS, scriptName: string, ...args: string[]) {
-    if (ns.isRunning(scriptName, "home", ...args)) {
+    if (ns.isRunning(scriptName, "home")) {
         return;
     }
     ns.exec(scriptName, "home", {}, ...args)
@@ -71,7 +71,7 @@ export async function main(ns: NS): Promise<void> {
     ns.disableLog("getHackingLevel");
     ns.disableLog("sleep");
 
-    runOnce(ns, "hashnet.js", "--autoSpend");
+    runOnce(ns, "hashnet.js", "--autoSpend", "--keepFraction", "0");
     runOnce(ns, "dispatch.js");
     runOnce(ns, "kawaii.js", "--focus", "money");
     if (ns.stock.has4SDataTIXAPI()) {
@@ -82,7 +82,7 @@ export async function main(ns: NS): Promise<void> {
     runOnce(ns, "bong.js");
     runOnce(ns, "jobber.js");
     runOnce(ns, "factoid.js", "--verbose");
-    runOnce(ns, "greensleeves.js", "crime");
+    runOnce(ns, "sleeve-man.crime.js");
     runOnce(ns, "server.js", "init");
     runOnce(ns, "backdoor.js", "all");
     runOnce(ns, "aug.helper.js");

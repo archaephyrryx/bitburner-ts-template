@@ -7,6 +7,9 @@ import { lzSolver } from 'coding_contracts/lz';
 import { arrayJumpSolver, arrayJumpSolverBinary } from 'coding_contracts/arrayjump';
 import { lpfSolver } from 'coding_contracts/lpf';
 import { subarraySumSolver } from 'coding_contracts/subarraysum';
+import { pathsumSolver } from 'coding_contracts/pathsum';
+import { sumwaysSolver } from 'coding_contracts/sumways';
+import { caesarSolver } from 'coding_contracts/encryption';
 
 export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);
@@ -41,12 +44,18 @@ export function solve_contract(ns: NS, cc: CodingContract, filename: string, hos
             return attemptSolution(arrayJumpSolver, ns, cc, filename, hostMachine, force);
         case "Compression II: LZ Decompression":
             return attemptSolution(lzSolver, ns, cc, filename, hostMachine, force);
+        case "Encryption I: Caesar Cipher":
+            return attemptSolution(caesarSolver, ns, cc, filename, hostMachine, force);
         case "Find Largest Prime Factor":
             return attemptSolution(lpfSolver, ns, cc, filename, hostMachine, force);
         case "Generate IP Addresses":
             return attemptSolution(ipAddrSolver, ns, cc, filename, hostMachine, force);
+        case "Minimum Path Sum in a Triangle":
+            return attemptSolution(pathsumSolver, ns, cc, filename, hostMachine, force);
         case "Subarray with Maximum Sum":
             return attemptSolution(subarraySumSolver, ns, cc, filename, hostMachine, force);
+        case "Total Ways to Sum":
+            return attemptSolution(sumwaysSolver, ns, cc, filename, hostMachine, force);
         case "Unique Paths in a Grid I":
             return attemptSolution(gridpathsSolver, ns, cc, filename, hostMachine, force);
         default:
