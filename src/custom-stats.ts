@@ -1,6 +1,5 @@
 import { NS } from "@ns";
-import { explore } from "./graph";
-import { StockInfo, aggregateStockInfo } from "./stock_helper";
+import { aggregateStockInfo } from "./stock_helper";
 import { hashCapacityProduction } from "./hashnet";
 
 /** @param {NS} ns **/

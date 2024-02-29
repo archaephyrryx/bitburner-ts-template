@@ -171,8 +171,8 @@ async function buyFromSomeFaction(ns: NS, augName: string, repReq: number, price
         if (myRep < repReq) continue;
         if (ns.gang.inGang() && ns.gang.getGangInformation().faction == faction) continue;
 
-        const id = await BUDGET.request(ns, price, "purchase next NeuroGov augmentation");
-        const [before, exact] = await BUDGET.until(ns, id);
+        const id = BUDGET.request(ns, price, "purchase next NeuroGov augmentation");
+        const [before, exact] = BUDGET.until(id);
         const ability = canAfford(ns, before + exact);
         if (ability[0] || (ability[1] && await liquidate(ns)) || (ns.isRunning("sunset.js", "home") && canAfford(ns, exact)[0])) {
             const res = await makePurchase(ns, id, (async (ns: NS) => ns.singularity.purchaseAugmentation(faction, augName)));
@@ -366,7 +366,7 @@ async function graftAugment(ns: NS, aug: string) {
         const time = ns.grafting.getAugmentationGraftTime(aug);
 
         ns.print(`WARNING: Grafting ${aug} will take ${formatTime(time / 1000)} and cost $${ns.formatNumber(price)}`);
-        const [liquid, unfrozen] = await getAvailMoney(ns);
+        const [liquid, unfrozen] = getAvailMoney(ns);
         if (unfrozen < price) {
             if (liquid >= price) {
                 ns.print(`WARNING: Can afford grafting price ${price}, but only by ignoring budget constraints.`);

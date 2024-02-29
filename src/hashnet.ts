@@ -37,7 +37,7 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
         ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity)} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"} | ${ns.formatNumber(prod)} h/s)`)
 
 
-        if (!sellOnly && autoSpend) {
+        if (autoSpend) {
             let additionalPrice = ns.hacknet.getPurchaseNodeCost();
             while (ns.getServerMoneyAvailable("home") >= additionalPrice) {
                 if (ns.hacknet.purchaseNode() == -1) {
@@ -50,7 +50,7 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
 
         for (let i = 0; i < nServers; i++) {
             let atMax = false;
-            if (!sellOnly && autoSpend) {
+            if (autoSpend) {
                 const shouldLvl = shouldUpgradeLevel(ns, i);
                 const shouldRam = shouldUpgradeRam(ns, i);
                 const shouldCore = shouldUpgradeCores(ns, i);

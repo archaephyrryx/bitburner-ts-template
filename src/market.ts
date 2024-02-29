@@ -77,7 +77,7 @@ export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     let portfolioSize = globalStocks.length;
     let cycle = 0;
-    const spendable = (await getAvailMoney(ns))[1];
+    const spendable = getAvailMoney(ns)[1];
     let totalBudget = getBudget(ns, spendable);
     if (forceSell) {
         const randomOrderStocks = randomizedStockOrder(ns);
@@ -110,7 +110,7 @@ export async function autoTrader(ns: NS, canBuy = true, forceSell = false) {
     }
     for (; ; cycle++) {
         ns.printf("====== AutoTrader cycle %d ======", cycle);
-        const [moneyAvailable, moneySpendable] = await getAvailMoney(ns);
+        const [moneyAvailable, moneySpendable] = getAvailMoney(ns);
         const oldBudget = totalBudget;
         totalBudget = getBudget(ns, moneySpendable);
         ns.printf("Budget: %d ==> %d (%0.02f%% ==> %0.02f%% of available money)", oldBudget, totalBudget, oldBudget / moneyAvailable * 100, totalBudget / moneyAvailable * 100);
@@ -252,11 +252,8 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
     if (args.length === 1 && args[0] === "autosell") {
         data.flags([["force", false]]);
         return [];
-    } else if (args.length === 1) {
-        return [];
-    } else if (args.length === 0) {
-        return ["autosell", "autotrade"];
     }
+    return ["autosell", "autotrad"]
 }
 
 /**
