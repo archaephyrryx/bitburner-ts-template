@@ -76,7 +76,7 @@ function display(ns: NS, table: FactionRepProgress[], flags: { [key: string]: st
     for (const entry of table) {
         const { factionName, augReqs, myRep } = entry;
         if (augReqs.length === 0) {
-            ns.print(`SUCCESS: Faction ${entry.factionName} has no more purchasable augmentations.`);
+            ns.print(`INFO: Faction ${entry.factionName} has no more purchasable augmentations.`);
             continue;
         } else {
             const sortedAugs = augReqs.toSorted((a, b) => a.reqRep - b.reqRep);

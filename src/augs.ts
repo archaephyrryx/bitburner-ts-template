@@ -62,6 +62,7 @@ function listAvail(ns: NS, print = true, includeNeuro = false): AugInfo[] {
     const factions = ns.getPlayer().factions;
 
     for (const fromFaction of factions) {
+        if (fromFaction == "Shadows of Anarchy") continue;
         for (const augName of ns.singularity.getAugmentationsFromFaction(fromFaction)) {
             if (owned.includes(augName)) {
                 if (augName.startsWith(NeuroGov)) {

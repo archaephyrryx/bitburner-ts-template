@@ -59,6 +59,10 @@ async function initiateCrime(ns: NS, count: number, crime: `${CrimeType}` = "Sho
     }
 
     for (const sleeveIx of canAssign) {
+        const oldTask = ns.sleeve.getTask(sleeveIx);
+        if (oldTask != null && oldTask.type == "CRIME" && oldTask.crimeType == crime) {
+            continue;
+        }
         ns.sleeve.setToCommitCrime(sleeveIx, crime);
     }
 }

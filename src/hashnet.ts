@@ -12,16 +12,16 @@ const TIMEFRAME = 4 * H;
 // type Yield = { kind: 'production', amount: number } | { kind: 'capacity', amount: number }
 
 export async function main(ns: NS) {
-    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5]]);
+    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5], ["noLimit", false]]);
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
     ns.tail();
 
 
-    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean, flags.keepFraction as number);
+    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean, flags.keepFraction as number, flags.noLimit as boolean);
 }
 
-async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false, keepFraction: number) {
+async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false, keepFraction: number, noLimit = false) {
     for (; ;) {
         const nServers = ns.hacknet.numNodes();
         let nHashes = ns.hacknet.numHashes();
@@ -54,11 +54,11 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
                 const shouldLvl = shouldUpgradeLevel(ns, i);
                 const shouldRam = shouldUpgradeRam(ns, i);
                 const shouldCore = shouldUpgradeCores(ns, i);
-                if (shouldLvl && ns.hacknet.upgradeLevel(i)) {
+                if ((noLimit || shouldLvl) && ns.hacknet.upgradeLevel(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} level.`, "success", 1000);
-                } else if (shouldRam && ns.hacknet.upgradeRam(i)) {
+                } else if ((noLimit || shouldRam) && ns.hacknet.upgradeRam(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} RAM.`, "success", 1000);
-                } else if (shouldCore && ns.hacknet.upgradeCore(i)) {
+                } else if ((noLimit || shouldCore) && ns.hacknet.upgradeCore(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} cores.`, "success", 1000);
                 } else if (upgradeCache && ns.hacknet.upgradeCache(i)) {
                     ns.toast(`Upgraded hacknet-server-${i} cache.`, "success", 1000);
@@ -94,7 +94,7 @@ export function hashCapacityProduction(ns: NS, numNodes: number): [number, numbe
 }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5]]);
+    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5], ["noLimit", false]]);
     return [];
 }
 

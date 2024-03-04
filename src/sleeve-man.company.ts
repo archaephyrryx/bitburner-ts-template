@@ -86,8 +86,11 @@ async function initiateWork(ns: NS, count: number) {
 
     if (factionLess.length > 0) {
         selective = factionLess;
-    } else {
+    } else if (infos.length > 0) {
         selective = infos;
+    } else {
+        ns.spawn("sleeve-man.crime.js", {}, fallbackCrime);
+        return;
     }
 
     const byRep = selective.toSorted((a, b) => a.rep - b.rep);

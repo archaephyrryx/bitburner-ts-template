@@ -12,6 +12,7 @@ const homeReserve = 96;
 const batchSize = 100_000;
 
 const defaultHGW = { hack: 1, grow: 8, weaken: 2 };
+// const defaultHGW = { hack: 0, grow: 1, weaken: 0 };
 
 export type SymbolDict = { [key: string]: string | undefined };
 
@@ -47,232 +48,6 @@ async function stagger(ns: NS, threads: number) {
 }
 
 function balanceHGW(ns: NS, server: string, pool: ThreadPool, hgw: HGWRatio): HGWRatio {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const iterLimit = 100;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const poolSize = pool.size();
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const plyrObj = ns.getPlayer();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const servObj = ns.getServer(server);
-
-    /*
-    function _growTime(tmpServ: Server, tmpPlyr: Player): number {
-        return ns.formulas.hacking.growTime(tmpServ, tmpPlyr);
-    }
-    function _hackTime(tmpServ: Server, tmpPlyr: Player): number {
-        return ns.formulas.hacking.hackTime(tmpServ, tmpPlyr);
-    }
-    function _weakenTime(tmpServ: Server, tmpPlyr: Player): number {
-        return ns.formulas.hacking.weakenTime(tmpServ, tmpPlyr);
-    }
-
-    const maxMoney = servObj.moneyMax ?? 0;
-    const initMoney = Math.max(1, servObj.moneyAvailable ?? 0);
-
-    const homeCores = ns.getServer("home").cpuCores ?? 1;
-    const homeMaxThreads = pool.getInfo("home").maxThreads ?? 0;
-
-    const minSec = servObj.minDifficulty ?? 1;
-    const initSec = servObj.hackDifficulty ?? minSec;
-
-    function _evHackDilationFactor(tmpServ: Server, tmpPlyr: Player,  nThreads: number): number {
-        const successRate = ns.formulas.hacking.hackChance(tmpServ, tmpPlyr);
-        const hackYield = ns.formulas.hacking.hackPercent(tmpServ, tmpPlyr);
-        return Math.max(0, (1 - (successRate * hackYield * nThreads)));
-    }
-
-    let iterSec = initSec;
-    let iterMoney = initMoney;
-    let iterServ = { ...servObj };
-
-    const hackThreadsBounds = { minimum: 1, maximum: poolSize };
-    let nHack = Math.ceil(poolSize * hackFraction(hgw));
-
-    function getOutcome(simServ: Server, simPlyr: Player, tithe: number): HGWOutcome {
-        let iterServ = { ...simServ };
-        let iterPlyr = { ...simPlyr };
-        let hackCountdown = _hackTime(iterServ, iterPlyr);
-        let growCountdown = _growTime(iterServ, iterPlyr);
-        let weakenCountdown = _weakenTime(iterServ, iterPlyr);
-
-        function hackThreadsForAmount(serv: Server, plyr: Player, hackAmount: number) {
-            if (hackAmount > serv.moneyAvailable! || hackAmount <= 0) {
-                return 0;
-            }
-            const bounds = { minimum: 1, maximum: poolSize };
-            let nHack = Math.ceil(poolSize * hackFraction(hgw));
-            do {
-                const moneyYield = serv.moneyAvailable! * _evHackDilationFactor(serv, plyr, nHack);
-                if (moneyYield > hackAmount) {
-                    bounds.maximum = nHack;
-                } else {
-                    bounds.minimum = nHack;
-                }
-                nHack = Math.ceil((bounds.minimum + bounds.maximum) / 2);
-            } while (bounds.minimum + 1 < bounds.maximum);
-            return nHack;
-        }
-
-        function growThreadsForMax(serv: Server, plyr: Player): [number, number] {
-            const homeMaxThreads = pool.getInfo("home").maxThreads ?? 0;
-            const homeCores = ns.getServer("home").cpuCores ?? 1;
-            const idealHomeThreads = ns.formulas.hacking.growThreads(serv, plyr, serv.moneyMax!, homeCores);
-            if (idealHomeThreads <= homeMaxThreads) {
-                return [idealHomeThreads, 0];
-            } else {
-                let homeContribution = ns.formulas.hacking.growPercent(serv, homeMaxThreads, plyr, homeCores);
-                return [homeMaxThreads, ns.formulas.hacking.growThreads({...serv, moneyAvailable: (serv.moneyAvailable! * homeContribution) }, plyr, serv.moneyMax!)];
-            }
-        }
-
-        function getWeakenThreadsForMin(serv: Server, plyr: Player) {
-            const bounds = { minimum: 1, maximum: poolSize };
-            let nWeaken = Math.ceil(poolSize * weakenFraction(hgw));
-            let idealYield = serv.hackDifficulty! - serv.minDifficulty!;
-            do {
-                const secYield = ns.weakenAnalyze(nWeaken);
-                if (secYield < idealYield) {
-                    bounds.maximum = nWeaken;
-                } else if (secYield > idealYield) {
-                    bounds.minimum = nWeaken;
-                }
-                nWeaken = Math.ceil((bounds.minimum + bounds.maximum) / 2);
-            } while (bounds.minimum + 1 < bounds.maximum);
-            return nWeaken;
-        }
-
-        let ticks = 0;
-
-        let nHack = 1;
-        let nGrow = 1;
-        let nWeaken = 1;
-
-        let scale = 1;
-
-        let timesHacked = 0;
-        let timesWeakened = 0;
-        let timesGrown = 0;
-
-        for ( ; timesHacked * timesGrown * timesWeakened == 0; ticks++) {
-            if (nHack + nWeaken + nGrow > poolSize) {
-                scale = poolSize / (nHack + nWeaken + nGrow);
-            }
-            if (hackCountdown <= 0) {
-                nHack = hackThreadsForAmount(iterServ, iterPlyr, tithe * iterServ.moneyAvailable!);
-                const actualHack = nHack * scale;
-                const dilation = _evHackDilationFactor(iterServ, iterPlyr, actualHack);
-                iterPlyr.money += iterServ.moneyAvailable! * (1 - dilation);
-                iterPlyr.exp.hacking += ns.formulas.hacking.hackExp(iterServ, iterPlyr) * nHack;
-                iterServ.moneyAvailable! *= dilation;
-                iterServ.hackDifficulty! += ns.hackAnalyzeSecurity(actualHack, server);
-                timesHacked++;
-                hackCountdown = _hackTime(iterServ, iterPlyr);
-            } else {
-                hackCountdown--;
-            }
-
-            if (growCountdown <= 0) {
-                const [hGrow, sGrow] = growThreadsForMax(iterServ, iterPlyr);
-                nGrow = hGrow + sGrow;
-                const [actualHGrow, actualSGrow] = [hGrow, (nGrow * scale) - hGrow];
-                iterServ.moneyAvailable! *= ns.formulas.hacking.growPercent(iterServ, actualHGrow, iterPlyr, homeCores)
-                iterServ.hackDifficulty! += ns.growthAnalyzeSecurity(actualHGrow, server, homeCores);
-                iterServ.moneyAvailable! *= ns.formulas.hacking.growPercent(iterServ, actualSGrow, iterPlyr);
-                iterServ.hackDifficulty! += ns.growthAnalyzeSecurity(actualHGrow, server);
-                timesGrown++;
-                growCountdown = _growTime(iterServ, iterPlyr);
-            } else {
-                growCountdown--;
-            }
-
-            if (weakenCountdown <= 0) {
-                let nWeaken = getWeakenThreadsForMin(iterServ, iterPlyr);
-                let actualWeaken = nWeaken * scale;
-                iterServ.hackDifficulty! -= ns.weakenAnalyze(actualWeaken);
-                timesWeakened++;
-                weakenCountdown = _weakenTime(iterServ, iterPlyr);
-            } else {
-                weakenCountdown--;
-            }
-        }
-        const ret: HGWOutcome =
-        {
-            timeElapsed: ticks,
-            deltaExp: iterPlyr.exp.hacking - simPlyr.exp.hacking,
-            moneyYield: iterPlyr.money - simPlyr.money,
-            deltaSec: iterServ.hackDifficulty! - simServ.hackDifficulty!,
-            serverMoneyPercent: iterServ.moneyAvailable! / iterServ.moneyMax!,
-        };
-        return ret;
-    }
-
-    for (let i = 0; i < iterLimit; i++) {
-        for (let j = 0; j < _hacksPerWeaken(iterSec); j++) {
-            iterMoney *= _evHackDilationFactor(iterSec, iterMoney, nHack);
-            iterSec += ns.hackAnalyzeSecurity(nHack, server);
-            if (iterMoney <= 1) {
-                break;
-            }
-        }
-        if (iterMoney <= 1) {
-            // Hack is too strong compared to grow and weaken
-            hackThreadsBounds.maximum = nHack;
-            hgw.grow *= 2;
-            hgw.weaken *= 2;
-            continue;
-        }
-
-        if (iterServ.hackDifficulty !== undefined) {
-            iterServ.hackDifficulty = iterSec;
-        }
-        if (iterServ.moneyAvailable !== undefined) {
-            iterServ.moneyAvailable = iterMoney;
-        }
-
-        const homePart = (iterServ.moneyAvailable ?? 1) * ns.formulas.hacking.growPercent(iterServ,idealHomeGrowThreads, plyrObj, homeCores);
-        const idealAwayGrowThreads = ns.formulas.hacking.growThreads({ ...iterServ, moneyAvailable: homePart }, plyrObj, maxMoney, 1);
-        const idealTotalGrowThreads = idealHomeGrowThreads + idealAwayGrowThreads;
-
-        (nGrow > idealTotalGrowThreads) {
-            // Grow is too strong compared to hack and weaken
-            hgw.hack *= 2;
-            hgw.weaken *= 2;
-            continue;
-        }
-
-
-        const reductionPerGrowCycle = (1 - Math.pow(
-
-            const growFactor = inverseGrow(nGrow, maxMoney / moneyAfter);
-
-        if (growFactor / < )
-            const y = ns.growthAnalyzeSecurity(nGrow, server);
-
-
-
-        const secIncrease = Math.ceil(ns.hackAnalyzeSecurity(nHack, server));
-        const secAfter = initSec + secIncrease;
-        const weakening = Math.ceil(ns.weakenAnalyze(nWeaken));
-        if (weakening > secAfter - minSec) {
-            // Weaken is too strong
-            hgw.weaken *= 0.8;
-        } else if (weakening < secIncrease) {
-            // Weaken is too weak
-            hgw.weaken *= 2;
-        }
-
-
-
-        const grow = Math.ceil(ns.growthAnalyzePercent(server, maxMoney / initMoney));
-        const weaken = Math.ceil(ns.weakenAnalyzePercent(server, initSec - minSec));
-        if (hack < weaken && weaken < grow) {
-            hgw = { hack, grow, weaken };
-            break;
-        }
-    }
-    */
     return hgw;
 }
 
@@ -285,21 +60,18 @@ async function getHGW(ns: NS, server: string, pool: ThreadPool): Promise<HGWRati
 
 
 class ProcessInfo {
-    protected pidThreads: { [pid: number]: number };
+    protected pidThreads: Map<number, number>;
 
     constructor() {
-        this.pidThreads = {};
+        this.pidThreads = new Map();
     }
 
     public addProcess(pid: number, threads: number) {
-        if (pid in this.pidThreads) {
-            throw new Error("Duplicate PID detected: " + pid);
-        }
-        this.pidThreads[pid] = threads;
+        this.pidThreads.set(pid, threads);
     }
 
     public getThreadCount(pid: number): number {
-        return this.pidThreads[pid] ?? 0;
+        return this.pidThreads.get(pid) ?? 0;
     }
 
     /**
@@ -307,17 +79,13 @@ class ProcessInfo {
      * @param pid
      */
     public pruneProcess(pid: number): number {
-        const ret = this.pidThreads[pid] ?? 0;
-        delete this.pidThreads[pid];
+        const ret = this.pidThreads.get(pid) ?? 0;
+        this.pidThreads.delete(pid);
         return ret;
     }
 
     get pids(): number[] {
-        const ret = [];
-        for (const key in this.pidThreads) {
-            ret.push(Number(key));
-        }
-        return ret;
+        return [...this.pidThreads.keys()];
     }
 }
 
@@ -332,16 +100,16 @@ type ThreadSummary = {
 
 export class ThreadPool {
     public isInitialized = false;
-    protected pool: { [server: string]: ThreadInfo };
+    protected pool: Map<string, ThreadInfo>;
     protected readonly threadRam;
 
     constructor(ns: NS) {
-        this.pool = {};
+        this.pool = new Map();
         this.threadRam = Math.max(ns.getScriptRam("hack.js", "home"), ns.getScriptRam("grow.js", "home"), ns.getScriptRam("weaken.js", "home"));
     }
 
     public knownServers(): string[] {
-        return Object.keys(this.pool);
+        return [...this.pool.keys()];
     }
 
     public init(ns: NS, graph: NodeInfo[]): void {
@@ -350,15 +118,13 @@ export class ThreadPool {
             if (!ns.serverExists(server.name)) {
                 continue;
             }
-            if (ns.hasRootAccess(server.name)) {
+            if (ns.hasRootAccess(server.name) || canHack(ns, server.name, 1)) {
                 let freeRam = ns.getServerMaxRam(server.name) - ns.getServerUsedRam(server.name);
                 if (server.name == "home") {
                     freeRam = Math.max(freeRam - homeReserve, 0);
                 }
                 const nThreads = Math.floor(freeRam / this.threadRam);
                 this.addNewServer(server.name, nThreads);
-            } else {
-                this.addNewServer(server.name, 0);
             }
         }
         this.isInitialized = true;
@@ -366,117 +132,128 @@ export class ThreadPool {
 
     public update(ns: NS, graph: NodeInfo[]): void {
         for (const server of graph) {
-            if (!(server.name in Object.keys(this.pool))) {
-                if (!ns.serverExists(server.name)) {
+            const poolServer = this.pool.get(server.name);
+            if (poolServer === undefined) {
+                if (!ns.serverExists(server.name) || !ns.hasRootAccess(server.name)) {
                     continue;
                 }
-                if (ns.hasRootAccess(server.name)) {
-                    const maxRam = ns.getServerMaxRam(server.name);
-                    const usedRam = ns.getServerUsedRam(server.name);
-                    const freeRam = Math.max(((server.name === "home") ? maxRam - homeReserve : maxRam) - usedRam, 0);
-                    const nThreads = Math.floor(freeRam / this.threadRam);
-                    this.addNewServer(server.name, nThreads);
-                } else {
-                    this.addNewServer(server.name, 0);
-                }
+                const maxRam = ns.getServerMaxRam(server.name);
+                const usedRam = ns.getServerUsedRam(server.name);
+                const freeRam = Math.max(((server.name === "home") ? maxRam - homeReserve : maxRam) - usedRam, 0);
+                const nThreads = Math.floor(freeRam / this.threadRam);
+                this.addNewServer(server.name, nThreads);
             } else {
-                let maxRam = ns.getServerMaxRam(server.name);
-                if (server.name == "home") {
-                    maxRam = Math.max(maxRam - homeReserve, 0);
-                }
-                if (maxRam > this.pool[server.name].maxThreads * this.threadRam) {
-                    ns.tprint(`INFO: ${server.name} max RAM increased to ${ns.formatRam(maxRam)}`);
-                }
-                const maxThreads = Math.floor(maxRam / this.threadRam);
-                this.updateServerThreads(ns, server.name, maxThreads);
+                const maxRam = ns.getServerMaxRam(server.name);
+                const usedRam = ns.getServerUsedRam(server.name);
+                const freeRam = Math.max(((server.name === "home") ? maxRam - homeReserve : maxRam) - usedRam, 0);
+                const nThreads = Math.floor(freeRam / this.threadRam);
+                this.updateServerThreads(ns, server.name, nThreads);
             }
         }
     }
 
-    public addHackThreads(server: string, nThreads: number, pid?: number): void {
-        if (!Object.keys(this.pool).includes(server)) {
+    public addHackThreads(server: string, nThreads: number, pid: number): void {
+        const serverInfo = this.pool.get(server);
+        if (serverInfo === undefined) {
             throw new Error(`Server ${server} not in pool`);
         }
-        this.pool[server].hackThreads += nThreads;
-        if (pid) {
-            this.pool[server].grows.addProcess(pid, nThreads);
-        }
+        serverInfo.hackThreads += nThreads;
+        serverInfo.hacks.addProcess(pid, nThreads);
     }
 
-    public addGrowThreads(server: string, nThreads: number, pid?: number): void {
-        if (!(Object.keys(this.pool).includes(server))) {
+    public addGrowThreads(server: string, nThreads: number, pid: number): void {
+        const serverInfo = this.pool.get(server);
+        if (serverInfo === undefined) {
             throw new Error(`Server ${server} not in pool`);
         }
-        this.pool[server].growThreads += nThreads;
-        if (pid) {
-            this.pool[server].grows.addProcess(pid, nThreads);
-        }
+        serverInfo.growThreads += nThreads;
+        serverInfo.grows.addProcess(pid, nThreads);
     }
 
-    public addWeakenThreads(server: string, nThreads: number, pid?: number): void {
-        if (!Object.keys(this.pool).includes(server)) {
+    public addWeakenThreads(server: string, nThreads: number, pid: number): void {
+        const serverInfo = this.pool.get(server);
+        if (serverInfo === undefined) {
             throw new Error(`Server ${server} not in pool`);
         }
-        this.pool[server].weakenThreads += nThreads;
-        if (pid) {
-            this.pool[server].weakens.addProcess(pid, nThreads);
-        }
+        serverInfo.weakenThreads += nThreads;
+        serverInfo.weakens.addProcess(pid, nThreads);
     }
 
     getInfo(server: string) {
-        if (!Object.keys(this.pool).includes(server)) {
+        const ret = this.pool.get(server);
+        if (ret === undefined) {
             throw new Error(`Server ${server} not in pool`);
         }
-        return this.pool[server];
+        return ret;
     }
 
     public addNewServer(server: string, nThreads: number): void {
-        this.pool[server] = {
-            maxThreads: Math.max(this.pool[server]?.maxThreads ?? 0, nThreads),
-            hackThreads: this.pool[server]?.hackThreads ?? 0,
-            growThreads: this.pool[server]?.growThreads ?? 0,
-            weakenThreads: this.pool[server]?.weakenThreads ?? 0,
+        if (this.pool.has(server)) {
+            return;
+        }
+        this.pool.set(server, {
+            maxThreads: nThreads,
+            hackThreads: 0,
+            growThreads: 0,
+            weakenThreads: 0,
             hacks: new ProcessInfo(),
             weakens: new ProcessInfo(),
             grows: new ProcessInfo(),
-        };
+        });
     }
 
     public updateServerThreads(ns: NS, server: string, newThreads: number): void {
-        if (!(Object.keys(this.pool).includes(server))) {
-            throw new Error(`Server ${server} not in pool`);
+        const serverInfo = this.pool.get(server);
+
+        if (serverInfo === undefined) {
+            return this.addNewServer(server, newThreads);
         }
-        this.pool[server].maxThreads = newThreads;
-        const hackPids = this.pool[server].hacks.pids;
-        const growPids = this.pool[server].grows.pids;
-        const weakenPids = this.pool[server].weakens.pids;
+
+        serverInfo.maxThreads = Math.max(newThreads, serverInfo.hackThreads + serverInfo.weakenThreads + serverInfo.growThreads);
+
+        const hackPids = serverInfo.hacks.pids;
+        const growPids = serverInfo.grows.pids;
+        const weakenPids = serverInfo.weakens.pids;
+
+        let nHackThreads = 0;
+        let nGrowThreads = 0;
+        let nWeakenThreads = 0;
+
         for (const pid of hackPids) {
-            if (!ns.isRunning(pid)) {
-                this.pool[server].hackThreads -= this.pool[server].hacks.pruneProcess(pid);
+            if (ns.isRunning(pid)) {
+                nHackThreads += serverInfo.hacks.getThreadCount(pid);
+            } else {
+                serverInfo.hacks.pruneProcess(pid);
             }
         }
+
         for (const pid of growPids) {
-            if (!ns.isRunning(pid)) {
-                this.pool[server].growThreads -= this.pool[server].grows.pruneProcess(pid);
+            if (ns.isRunning(pid)) {
+                nGrowThreads += serverInfo.grows.getThreadCount(pid);
+            } else {
+                serverInfo.grows.pruneProcess(pid);
             }
         }
+
         for (const pid of weakenPids) {
-            if (!ns.isRunning(pid)) {
-                this.pool[server].weakenThreads -= this.pool[server].weakens.pruneProcess(pid);
+            if (ns.isRunning(pid)) {
+                nWeakenThreads += serverInfo.weakens.getThreadCount(pid);
+            } else {
+                serverInfo.weakens.pruneProcess(pid);
             }
         }
+
+        serverInfo.hackThreads = nHackThreads;
+        serverInfo.growThreads = nGrowThreads;
+        serverInfo.weakenThreads = nWeakenThreads;
     }
 
     public size(): number {
-        return Object.values(this.pool).reduce((acc, server) => acc + server.maxThreads, 0);
-    }
-
-    public available(): number {
-        return Object.values(this.pool).reduce((acc, server) => acc + server.maxThreads - server.hackThreads - server.growThreads - server.weakenThreads, 0);
+        return [...this.pool.values()].reduce((acc, server) => acc + server.maxThreads, 0);
     }
 
     public headCount(): ThreadSummary {
-        return Object.values(this.pool).reduce((acc, server) => {
+        return [...this.pool.values()].reduce((acc, server) => {
             acc.maxThreads += server.maxThreads;
             acc.hackThreads += server.hackThreads;
             acc.growThreads += server.growThreads;
@@ -487,7 +264,7 @@ export class ThreadPool {
 }
 
 function renew(ns: NS): NodeInfo[] {
-    const graph = getGraph(ns);
+    const graph = getGraph(ns, true);
     ns.scriptKill("hack.js", "home");
     ns.scriptKill("grow.js", "home");
     ns.scriptKill("weaken.js", "home");
@@ -683,7 +460,7 @@ async function spawnTarget(ns: NS, target: string, graph: NodeInfo[], args: stri
         }
 
         await ns.sleep(1000);
-        graph = filterGraph(getGraph(ns), runOnHacknet);
+        graph = filterGraph(getGraph(ns, true), runOnHacknet);
         const currentSec = ns.getServerSecurityLevel(target);
         const currentMoney = ns.getServerMoneyAvailable(target);
         ns.clearLog();

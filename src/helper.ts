@@ -116,7 +116,7 @@ export function canCrack(ns: NS, server: string): boolean {
  * @returns true if server can be hacked, false otherwise
  */
 export function canHack(ns: NS, server: string, handicap = 0.5): boolean {
-    if (server === "home" || server.startsWith("pserv")) {
+    if (server === "home" || server.startsWith("pserv") || server.startsWith("hacknet-server")) {
         return false;
     }
     const requiredSkill = ns.getServerRequiredHackingLevel(server);
