@@ -167,7 +167,7 @@ function getFactionsByPriority(ns: NS, table: FactionRepProgress[], limit = -1) 
     }
 }
 function setSleeveToFactionWork(ns: NS, sleeveIx: number, factionName: string): boolean {
-    const types = ["field", "security", "hacking"];
+    const types = ["security", "field", "hacking"];
     for (const workType of types) {
         if (ns.sleeve.setToFactionWork(sleeveIx, factionName, workType as FactionWorkType)) {
             return true;

@@ -74,8 +74,15 @@ export async function main(ns: NS): Promise<void> {
     if (ns.stock.has4SDataTIXAPI()) {
         runOnce(ns, "market.js", "autotrade");
     }
-    runOnce(ns, "hashnet.js", "--autoSpend", "--keepFraction", "0");
-    runOnce(ns, "server.js", "init");
+    if (ns.bladeburner.inBladeburner()) {
+        runOnce(ns, "blade.js");
+        runOnce(ns, "sleeve-man.blade.js");
+        runOnce(ns, "hashnet.js", "--autoSpend", "--upgradeCache", "--keepFraction", "0.5");
+    } else {
+        runOnce(ns, "sleeve-man.crime.js");
+        runOnce(ns, "hashnet.js", "--autoSpend", "--keepFraction", "0");
+    }
+    // runOnce(ns, "server.js", "init");
     runOnce(ns, "dispatch.js");
     runOnce(ns, "kawaii.js", "--focus", "money");
     runOnce(ns, "custom-stats.js");
@@ -83,7 +90,6 @@ export async function main(ns: NS): Promise<void> {
     runOnce(ns, "bong.js");
     runOnce(ns, "jobber.js");
     runOnce(ns, "factoid.js", "--verbose");
-    runOnce(ns, "sleeve-man.crime.js");
     runOnce(ns, "backdoor.js", "all");
     runOnce(ns, "aug.helper.js");
     runOnce(ns, "monitor.js");

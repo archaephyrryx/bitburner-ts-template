@@ -4,6 +4,8 @@ import { H, bold, reset } from './helper';
 const MONEY_PER_HASH = 250_000;
 const HASH_FOR_MONEY = 4;
 
+const bbUpgrades = ["Exchange for Bladeburner Rank", "Exchange for Bladeburner SP"];
+
 const TIMEFRAME = 4 * H;
 
 // type UpgradeKind = "level" | "ram" | "cores" | "cache";
@@ -44,6 +46,16 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
                     break;
                 } else {
                     additionalPrice = ns.hacknet.getPurchaseNodeCost();
+                }
+            }
+        }
+
+        if (ns.bladeburner.inBladeburner() && keepFraction > 0) {
+            for (const up of bbUpgrades) {
+                ns.print(`INFO: Will purchase '${up}' when sufficient hashes are stored...`);
+                while (ns.hacknet.spendHashes(up)) {
+                    ns.toast(`Spent hashes on ${up}`, "success", 1000);
+                    await ns.sleep(100);
                 }
             }
         }

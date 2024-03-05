@@ -20,6 +20,8 @@ export enum ScriptFile {
 
 
 export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boolean> {
+    if (ns.bladeburner.getCurrentAction().type !== 'Idle')
+        return false;
     const prevWork = getWork(ns);
     if (prevWork !== null) {
         switch (prevWork.type) {

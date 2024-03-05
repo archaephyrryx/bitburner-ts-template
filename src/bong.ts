@@ -1,9 +1,10 @@
 import { NS } from '@ns';
 import { M } from './helper';
-import { Cities, CityName } from './global';
+import { Cities } from './global';
 
 export async function main(ns: NS) {
     await everyNSeconds(ns, [
+        ["blade.skill.js", []],
         ["sleeve-man.faction.js", []],
         ["sleeve-man.company.js", []],
     ], M);
@@ -12,11 +13,10 @@ export async function main(ns: NS) {
 export async function everyNSeconds(ns: NS, commands: [string, string[]][], nSeconds = M) {
     for (; ;) {
         for (const [cmd, args] of commands) {
-            if (ns.exec(cmd, "home", {}, ...args) !== 0) {
-                await ns.sleep(2000);
-                continue;
+            const pid = ns.exec(cmd, "home", {}, ...args);
+            while (ns.isRunning(pid)) {
+                await ns.sleep(100);
             }
-            ns.print(`WARNING: Unable to exec '${cmd} ${args.join(' ')}' automatically...`);
         }
         joinAllFactions(ns);
         await ns.sleep(nSeconds * 1000);
