@@ -5,6 +5,7 @@ const AUTO_CONTRACT_MIN_CHANCE = 0.95;
 const AUTO_OPERATION_MIN_CHANCE = 0.975;
 const ATTEMPTS_LWM = 100;
 const ATTEMPTS_HWM = 200;
+const CHAOS_LIMIT = 10;
 
 export async function main(ns: NS) {
     ns.disableLog('sleep');
@@ -140,7 +141,7 @@ function attemptContract(ns: NS) {
         }
     }
 
-    if (ns.bladeburner.getCityChaos(ns.bladeburner.getCity()) > 0) {
+    if (ns.bladeburner.getCityChaos(ns.bladeburner.getCity()) > CHAOS_LIMIT) {
         if (myAction.type != "General" || myAction.name != "Diplomacy") ns.bladeburner.startAction("General", "Diplomacy");
         else ns.print(`INFO: Will continue action 'Diplomacy' (General) after finishing current cycle...`);
     } else {
