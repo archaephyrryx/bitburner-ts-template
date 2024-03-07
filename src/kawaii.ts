@@ -224,7 +224,7 @@ async function combatGang(
                 } else {
                     assignCombatTask(ns, tasks, member, info, gangInfo, "respect");
                 }
-            } else if (res === undefined) {
+            } else if (res === undefined || (res.agi < MIN_ASC_MULT && res.str < MIN_ASC_MULT && res.def < MIN_ASC_MULT && res.dex < MIN_ASC_MULT)) {
                 ns.print(`INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`);
                 ns.gang.setMemberTask(member, "Train Combat");
             } else if (
@@ -286,6 +286,9 @@ async function combatGang(
         await ns.gang.nextUpdate();
     }
 }
+
+const MIN_ASC_MULT = 1.00025;
+
 
 function assignCombatTask(ns: NS, tasks: string[], memberName: string, memberInfo: GangMemberInfo, gangInfo: GangGenInfo, focus: Focus = 'money') {
     let bestTask: string | undefined = undefined;
