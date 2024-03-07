@@ -1,13 +1,19 @@
-import { NS } from '@ns';
+import { AutocompleteData, NS } from '@ns';
+import { BladeSnap, formatSuccesses, getSnapshot, successesSinceInstall } from './blade.snapshot';
+import { formatTime } from './helper';
 
 const MAX_STAMINA_TGT = 100;
 const AUTO_CONTRACT_MIN_CHANCE = 0.95;
 const AUTO_OPERATION_MIN_CHANCE = 0.975;
+const AUTO_BLACKOPS_MIN_CHANCE = 0.99;
 const ATTEMPTS_LWM = 100;
 const ATTEMPTS_HWM = 200;
-const CHAOS_LIMIT = 10;
+export const CHAOS_LIMIT = 10;
+const CONTRACT_OPERATION_RATIO = 0.2;
+
 
 export async function main(ns: NS) {
+    const flags = ns.flags([["contractOnly", false]])
     ns.disableLog('sleep');
     ns.disableLog('getPlayer');
     ns.disableLog('bladeburner.getCurrentAction');
@@ -15,6 +21,10 @@ export async function main(ns: NS) {
     ns.disableLog('bladeburner.getActionTime');
     ns.disableLog('bladeburner.getActionTime');
     ns.tail();
+
+    const contractOnly: boolean = flags.contractOnly as boolean;
+
+    const snapshot = getSnapshot(ns);
 
     for (; ;) {
         ns.clearLog();
@@ -35,51 +45,65 @@ export async function main(ns: NS) {
                 ns.bladeburner.startAction("General", "Training");
             }
         } else {
-            if (!attemptOperation(ns)) attemptContract(ns);
+            if (!attemptBlackOp(ns)) {
+                if (contractSwitch(ns, snapshot) || contractOnly || !attemptOperation(ns)) attemptContract(ns);
+            }
         }
         await ns.sleep(200);
     }
 }
+
+
+
+function contractSwitch(ns: NS, snapshot: BladeSnap): boolean {
+    const [contCount, opCount] = successesSinceInstall(ns, snapshot);
+    ns.print(`INFO: ${formatSuccesses(contCount, opCount)}`);
+    return (contCount === 0 || (opCount != 0 && contCount <= CONTRACT_OPERATION_RATIO * opCount));
+}
+
 
 function isFullHP(ns: NS) {
     const { current, max } = ns.getPlayer().hp;
     return current >= max;
 }
 
-function doContract(ns: NS, name: string): boolean {
-    const [current, max] = ns.bladeburner.getStamina();
-    const myAction = ns.bladeburner.getCurrentAction();
-
-    if (ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
-        if (ns.bladeburner.getActionAutolevel("Contracts", name)) {
-            if (ns.bladeburner.getActionCurrentLevel("Contracts", name) > 1) ns.bladeburner.setActionAutolevel("Contracts", name, false);
+function adjustLevel(ns: NS, type: string, name: string, minChance: number) {
+    if (ns.bladeburner.getActionEstimatedSuccessChance(type, name)[0] < minChance) {
+        if (ns.bladeburner.getActionAutolevel(type, name)) {
+            if (ns.bladeburner.getActionCurrentLevel(type, name) > 1) ns.bladeburner.setActionAutolevel(type, name, false);
         }
-        while (ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
-            const curLevel = ns.bladeburner.getActionCurrentLevel("Contracts", name);
+        while (ns.bladeburner.getActionEstimatedSuccessChance(type, name)[0] < minChance) {
+            const curLevel = ns.bladeburner.getActionCurrentLevel(type, name);
             if (curLevel == 1) break;
-            ns.bladeburner.setActionLevel("Contracts", name, curLevel - 1);
+            ns.bladeburner.setActionLevel(type, name, curLevel - 1);
         }
     } else {
-        let bestLevel = ns.bladeburner.getActionCurrentLevel("Contracts", name) + 1;
-        while (bestLevel <= ns.bladeburner.getActionMaxLevel("Contracts", name)) {
-            ns.bladeburner.setActionLevel("Contracts", name, bestLevel);
-            if (ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
+        let bestLevel = ns.bladeburner.getActionCurrentLevel(type, name) + 1;
+        while (bestLevel <= ns.bladeburner.getActionMaxLevel(type, name)) {
+            ns.bladeburner.setActionLevel(type, name, bestLevel);
+            if (ns.bladeburner.getActionEstimatedSuccessChance(type, name)[0] < minChance) {
                 if (bestLevel > 1) {
                     bestLevel -= 1;
                 }
-                ns.bladeburner.setActionLevel("Contracts", name, bestLevel);
+                ns.bladeburner.setActionLevel(type, name, bestLevel);
                 break;
             } else {
                 bestLevel += 1;
             }
         }
-        if (bestLevel >= ns.bladeburner.getActionMaxLevel("Contracts", name)) {
-            ns.bladeburner.setActionAutolevel("Contracts", name, true);
+        if (bestLevel >= ns.bladeburner.getActionMaxLevel(type, name)) {
+            ns.bladeburner.setActionAutolevel(type, name, true);
         }
     }
+}
+
+function doContract(ns: NS, name: string): boolean {
+    const [current, max] = ns.bladeburner.getStamina();
+    const myAction = ns.bladeburner.getCurrentAction();
+
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] >= AUTO_CONTRACT_MIN_CHANCE) {
-        if (myAction.type != "Contract") {
+        if (myAction.type != "Contract" || myAction.name != name) {
             if (ns.bladeburner.getActionMaxLevel("Contracts", name) == ns.bladeburner.getActionCurrentLevel("Contracts", name)) ns.bladeburner.setActionAutolevel("Contracts", name, true);
             return ns.bladeburner.startAction("Contracts", name);
         }
@@ -95,6 +119,7 @@ function attemptOperation(ns: NS) {
     const operations = ns.bladeburner.getOperationNames();
     for (const opName of operations) {
         if (opName == "Sting Operation" || opName == "Raid" || opName == "Stealth Retirement Operation") continue;
+        adjustLevel(ns, "Operations", opName, AUTO_OPERATION_MIN_CHANCE);
         infos.push([...getOperationInfo(ns, opName), opName]);
     }
 
@@ -102,11 +127,8 @@ function attemptOperation(ns: NS) {
         if (!ns.isRunning("sleeve-man.blade.js", "home")) {
             ns.exec("sleeve-man.blade.js", "home");
         }
-    } else if (infos.every(([count, ,]) => count > ATTEMPTS_HWM)) {
-        ns.scriptKill("sleeve-man.blade.js", "home");
     }
-
-    infos.sort(([levelA, , nameA], [levelB, , nameB]) => ns.bladeburner.getActionRepGain("Operations", nameB, levelB) - ns.bladeburner.getActionRepGain("Operations", nameA, levelA));
+    infos.sort(([, levelA, nameA], [, levelB, nameB]) => operationYield(ns, nameB, levelB) - operationYield(ns, nameA, levelA));
 
     for (const [, , name] of infos) {
         if (doOperation(ns, name)) {
@@ -122,17 +144,16 @@ function attemptContract(ns: NS) {
 
     const infos: [number, number, string][] = [];
     for (const contractName of ns.bladeburner.getContractNames()) {
+        adjustLevel(ns, "Contracts", contractName, AUTO_CONTRACT_MIN_CHANCE);
         infos.push([...getContractInfo(ns, contractName), contractName]);
     }
 
-    infos.sort(([levelA, , nameA], [levelB, , nameB]) => ns.bladeburner.getActionRepGain("Contracts", nameB, levelB) - ns.bladeburner.getActionRepGain("Contracts", nameA, levelA));
+    infos.sort(([, levelA,], [, levelB,]) => levelA - levelB);
 
     if (infos.some(([count, ,]) => count < ATTEMPTS_LWM)) {
         if (!ns.isRunning("sleeve-man.blade.js", "home")) {
             ns.exec("sleeve-man.blade.js", "home");
         }
-    } else if (infos.every(([count, ,]) => count > ATTEMPTS_HWM)) {
-        ns.scriptKill("sleeve-man.blade.js", "home");
     }
 
     for (const [, , name] of infos) {
@@ -169,36 +190,9 @@ function doOperation(ns: NS, name: string) {
     const [current, max] = ns.bladeburner.getStamina();
     const myAction = ns.bladeburner.getCurrentAction();
 
-    if (ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
-        if (ns.bladeburner.getActionAutolevel("Operations", name)) {
-            if (ns.bladeburner.getActionCurrentLevel("Operations", name) > 1) ns.bladeburner.setActionAutolevel("Operations", name, false);
-        }
-        while (ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
-            const curLevel = ns.bladeburner.getActionCurrentLevel("Operations", name);
-            if (curLevel == 1) break;
-            ns.bladeburner.setActionLevel("Operations", name, curLevel - 1);
-        }
-    } else {
-        let bestLevel = ns.bladeburner.getActionCurrentLevel("Operations", name) + 1;
-        while (bestLevel <= ns.bladeburner.getActionMaxLevel("Operations", name)) {
-            ns.bladeburner.setActionLevel("Operations", name, bestLevel);
-            if (ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] < AUTO_CONTRACT_MIN_CHANCE) {
-                if (bestLevel > 1) {
-                    bestLevel -= 1;
-                }
-                ns.bladeburner.setActionLevel("Operations", name, bestLevel);
-                break;
-            } else {
-                bestLevel += 1;
-            }
-        }
-        if (bestLevel >= ns.bladeburner.getActionMaxLevel("Operations", name)) {
-            ns.bladeburner.setActionAutolevel("Operations", name, true);
-        }
-    }
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] >= AUTO_OPERATION_MIN_CHANCE) {
-        if (myAction.type != "Operation") {
+        if (myAction.type != "Operation" || myAction.name != name) {
             if (ns.bladeburner.getActionMaxLevel("Operations", name) == ns.bladeburner.getActionCurrentLevel("Operations", name)) ns.bladeburner.setActionAutolevel("Operations", name, true);
             return ns.bladeburner.startAction("Operations", name);
         }
@@ -206,5 +200,42 @@ function doOperation(ns: NS, name: string) {
         return true;
     } else {
         return false;
+    }
+}
+
+function contractRank(ns: NS, name: string): number {
+    return ns.bladeburner.getActionMaxLevel("Contracts", name);
+}
+
+function operationYield(ns: NS, name: string, level: number): number {
+    return ns.bladeburner.getActionRepGain("Operations", name, level) / ns.bladeburner.getActionTime("Operations", name);
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    data.flags([["contractOnly", false]]);
+    return [];
+}
+
+function attemptBlackOp(ns: NS): boolean {
+    const nextOp = ns.bladeburner.getNextBlackOp();
+    if (nextOp == null || nextOp.rank > ns.bladeburner.getRank()) return false;
+
+    const [minChance, maxChance] = ns.bladeburner.getActionEstimatedSuccessChance("BlackOps", nextOp.name);
+    if (minChance < AUTO_BLACKOPS_MIN_CHANCE) {
+        if (minChance < maxChance) {
+            const myAction = ns.bladeburner.getCurrentAction();
+            if (myAction.type != "General" || myAction.name != "Field Analysis") ns.bladeburner.startAction("General", "Field Analysis");
+            else ns.print(`INFO: Will continue action 'Field Analysis' (General) after finishing current cycle...`);
+            return true;
+        }
+        return false;
+    } else {
+        const myAction = ns.bladeburner.getCurrentAction();
+        if (myAction.type != "BlackOp") {
+            ns.bladeburner.startAction("BlackOps", nextOp.name);
+        }
+        const timeLeft = ns.bladeburner.getActionTime("BlackOps", nextOp.name) - ns.bladeburner.getActionCurrentTime();
+        ns.print(`INFO: Attempting Black Op '${nextOp.name}': ${ns.formatPercent(minChance)} ~ ${ns.formatPercent(maxChance)} success rate, ${formatTime(Math.floor(timeLeft / 1000))} left.`);
+        return true;
     }
 }

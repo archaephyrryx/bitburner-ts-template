@@ -1,6 +1,6 @@
 import { NS, CompanyName, FactionWorkType } from "@ns";
 import { getFactionRepProgress, FactionRepProgress } from "./factoid";
-import { CityName, CompanyInfo, getCompanyInfo, MegacorpNames, universityToCity } from './global';
+import { CompanyInfo, getCompanyInfo, MegacorpNames, universityToCity } from './global';
 import { fallbackAction, fallbackCrime, moveToCity } from "./sleeve-man.consts";
 
 const SYNCHRO_THRESHOLD = 50;
@@ -167,7 +167,7 @@ function getFactionsByPriority(ns: NS, table: FactionRepProgress[], limit = -1) 
     }
 }
 function setSleeveToFactionWork(ns: NS, sleeveIx: number, factionName: string): boolean {
-    const types = ["security", "field", "hacking"];
+    const types = ["field", "security", "hacking"];
     for (const workType of types) {
         if (ns.sleeve.setToFactionWork(sleeveIx, factionName, workType as FactionWorkType)) {
             return true;

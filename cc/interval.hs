@@ -15,7 +15,7 @@ instance Ord Interval where
   compare (Interval s e) (Interval s' e') = compare e e' <> compare (e - s) (e' - s')
 
 mergeIntervals :: [(Int, Int)] -> [Interval]
-mergeIntervals = mergeIntervals' . map (uncurry Interval)
+mergeIntervals = stableRecurse mergeIntervals' . map (uncurry Interval)
   where
     mergeIntervals' :: [Interval] -> [Interval]
     mergeIntervals' = go . sort
@@ -35,6 +35,10 @@ overlaps (Interval s e) (Interval s' e') =
 merge :: Interval -> Interval -> Interval
 merge (Interval s e) (Interval s' e') =
   Interval (min s s') (max e e')
+
+stableRecurse :: (Eq a) => (a -> a) -> a -> a
+stableRecurse f x =
+  let y = f x in if x == y then y else f y
 
 main :: IO ()
 main = do

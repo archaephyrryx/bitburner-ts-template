@@ -37,6 +37,14 @@ merge_intervals(Spans) = Joined :-
   Sorted = list.sort(compare_interval, Spans),
   merge_intervals_(Sorted, Joined).
 
+:- pred stable_recurse((func(list(interval)) = list(interval)), list(interval), list(interval)).
+:- mode stable_recurse(in, in, out) is det.
+stable_recurse(F, Xs, Zs) :-
+  F(Xs) = Ys,
+  list.length(Xs, M),
+  list.length(Ys, N),
+  ( if M = N then Zs = Ys else stable_recurse(F, Ys, Zs)).
+
 :- pred merge_intervals_(list(interval), list(interval)).
 :- mode merge_intervals_(in, out) is det.
 merge_intervals_(Is, Merged) :-
@@ -76,7 +84,7 @@ main(!IO) :-
   io.read_line_as_string(Res, !IO),
   ( Res = ok(Line) ->
     ( parse(Line, Intervals) ->
-      merge_intervals(Intervals) = Merged,
+      stable_recurse(merge_intervals, Intervals, Merged),
       io.print(list.map((func(interval(Lo, Hi)) = [Lo, Hi]), Merged), !IO)
     ; io.format("no parse!\n", [], !IO)
     )

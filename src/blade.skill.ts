@@ -21,6 +21,7 @@ function rankBlade(ns: NS): boolean {
     const skillRatingCosts: [string, number, number][] = [];
 
     for (const skill of skills) {
+        if (cannotUpgrade(ns, skill)) continue;
         const cost = ns.bladeburner.getSkillUpgradeCost(skill, 1);
         const weight = skillmods.get(skill);
         if (weight == undefined) {
@@ -33,7 +34,9 @@ function rankBlade(ns: NS): boolean {
     skillRatingCosts.sort((a, b) => a[1] - b[1]);
     const [skill, , cost] = skillRatingCosts[0];
     if (cost <= points) {
-        ns.bladeburner.upgradeSkill(skill, 1);
+        if (!ns.bladeburner.upgradeSkill(skill, 1)) {
+            return false;
+        }
         ns.toast(`Purchased ${skill} level ${ns.bladeburner.getSkillLevel(skill)}`, 'success', 2000);
         return true;
     }
@@ -45,9 +48,15 @@ function rankBlade(ns: NS): boolean {
 }
 
 export async function main(ns: NS) {
+    if (!ns.bladeburner.inBladeburner()) ns.exit();
     while (rankBlade(ns)) {
         await ns.sleep(100);
     }
     return;
-    ns.exit();
+}
+
+function cannotUpgrade(ns: NS, skill: string) {
+    const LIMITS: Record<string, number> = { ["Overclock"]: 90 };
+    const curLevel = ns.bladeburner.getSkillLevel(skill);
+    return LIMITS[`${skill}`] !== undefined && curLevel >= LIMITS[`${skill}`];
 }

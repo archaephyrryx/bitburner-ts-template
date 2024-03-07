@@ -97,7 +97,7 @@ export enum CityName {
     Ishima = "Ishima",
     Volhaven = "Volhaven"
 }
-export const Cities: string[] = [...Object.values(CityName)];
+export const Cities: `${CityName}`[] = [...Object.values(CityName)];
 
 export type SleeveTask =
     | SleeveBladeburnerTask

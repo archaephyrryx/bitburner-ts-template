@@ -218,11 +218,11 @@ async function combatGang(
                     ns.print(`${bold}INFO: Ascension candidate ${member} will continue task ${info.task} until manually ascended...${reset}`);
                 }
             } else if (absPenaltyPercent >= WANTED_PENALTY_HIGH_WATERMARK) {
-                if (info.respectGain < info.wantedLevelGain || (absPenaltyPercent >= WANTED_PENALTY_LOW_WATERMARK && info.wantedLevelGain < 0)) {
+                if (gangInfo.wantedLevel > 1 && (info.respectGain < info.wantedLevelGain || (absPenaltyPercent >= WANTED_PENALTY_LOW_WATERMARK && info.wantedLevelGain < 0))) {
                     ns.gang.setMemberTask(member, "Vigilante Justice");
                     ns.print(`INFO: Wanted Level too high, ${member} will perform "Vigilante Justice"`)
                 } else {
-                    assignHackingTask(ns, tasks, member, info, gangInfo, "respect");
+                    assignCombatTask(ns, tasks, member, info, gangInfo, "respect");
                 }
             } else if (res === undefined) {
                 ns.print(`INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`);

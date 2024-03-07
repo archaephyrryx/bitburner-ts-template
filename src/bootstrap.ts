@@ -77,10 +77,10 @@ export async function main(ns: NS): Promise<void> {
     if (ns.bladeburner.inBladeburner()) {
         runOnce(ns, "blade.js");
         runOnce(ns, "sleeve-man.blade.js");
-        runOnce(ns, "hashnet.js", "--autoSpend", "--upgradeCache", "--keepFraction", "0.5");
+        runOnce(ns, "hashnet.js", "--autoUpgrade", "--upgradeCache", "--keepFraction", "0.5", "--maxServers", "8");
     } else {
         runOnce(ns, "sleeve-man.crime.js");
-        runOnce(ns, "hashnet.js", "--autoSpend", "--keepFraction", "0");
+        runOnce(ns, "hashnet.js", "--autoUpgrade", "--keepFraction", "0", "--maxServers", "8");
     }
     // runOnce(ns, "server.js", "init");
     runOnce(ns, "dispatch.js");

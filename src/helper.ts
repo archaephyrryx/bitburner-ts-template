@@ -191,3 +191,9 @@ function equalMultipliers(currentMults: BitNodeMultipliers, nMults: BitNodeMulti
 export const bold = "\u001b[01m";
 export const reset = "\u001b[0m";
 export const red = "\u001b[31m";
+
+export function formatRatio(x: number, y: number): string {
+    const lhs = `${x == 0 ? 0 : (x <= y || y == 0) ? 1 : x % y == 0 ? x / y : (x / y).toFixed(2)}`;
+    const rhs = `${y == 0 ? 0 : (y <= x || x == 0) ? 1 : y % x == 0 ? y / x : (y / x).toFixed(2)}`;
+    return `${lhs}:${rhs}`;
+}

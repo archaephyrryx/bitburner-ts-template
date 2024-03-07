@@ -1,4 +1,4 @@
-import { AutocompleteData, NS } from '@ns';
+import { AutocompleteData, NS, ScriptArg } from '@ns';
 import { H, bold, reset } from './helper';
 
 const MONEY_PER_HASH = 250_000;
@@ -13,17 +13,34 @@ const TIMEFRAME = 4 * H;
 // type Action = { kind: 'PURCHASE' } | { kind: 'UPGRADE', what: UpgradeKind, which: number } | { kind: 'EXCHANGE', nTimes: number };
 // type Yield = { kind: 'production', amount: number } | { kind: 'capacity', amount: number }
 
+const ArgsSchema: Array<[string, string | number | boolean | string[]]> = [
+    ["autoUpgrade", false],
+    ["sellOnly", false],
+    ["upgradeCache", false],
+    ["keepFraction", 0.5],
+    ["noLimit", false],
+    ["maxServers", -1],
+];
+
 export async function main(ns: NS) {
-    const flags = ns.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5], ["noLimit", false]]);
+    const flags = ns.flags(ArgsSchema);
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
     ns.tail();
 
 
-    await crawl(ns, flags.autoSpend as boolean, flags.sellOnly as boolean, flags.upgradeCache as boolean, flags.keepFraction as number, flags.noLimit as boolean);
+    await crawl(ns, flags);
 }
 
-async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache = false, keepFraction: number, noLimit = false) {
+async function crawl(ns: NS, flags: { [key: string]: ScriptArg | string[] }) {
+
+    const keepFraction = flags.keepFraction as number;
+    const sellOnly = flags.sellOnly as boolean;
+    const autoUpgrade = flags.autoUpgrade as boolean;
+    const upgradeCache = flags.upgradeCache as boolean;
+    const noLimit = flags.noLimit as boolean;
+    const maxServers = flags.maxServers as number;
+
     for (; ;) {
         const nServers = ns.hacknet.numNodes();
         let nHashes = ns.hacknet.numHashes();
@@ -36,10 +53,10 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
         }
 
         ns.clearLog();
-        ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity)} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"} | ${ns.formatNumber(prod)} h/s)`)
+        ns.print(`Hashes: ${ns.formatNumber(nHashes, 3)}/${ns.formatNumber(capacity, 3)} (${capacity > 0 ? ns.formatPercent(nHashes / capacity) : "N/A"} | ${ns.formatNumber(prod)} h/s)`)
 
 
-        if (autoSpend) {
+        if (autoUpgrade && (maxServers < 0 || nServers < maxServers)) {
             let additionalPrice = ns.hacknet.getPurchaseNodeCost();
             while (ns.getServerMoneyAvailable("home") >= additionalPrice) {
                 if (ns.hacknet.purchaseNode() == -1) {
@@ -62,7 +79,7 @@ async function crawl(ns: NS, autoSpend = false, sellOnly = false, upgradeCache =
 
         for (let i = 0; i < nServers; i++) {
             let atMax = false;
-            if (autoSpend) {
+            if (autoUpgrade) {
                 const shouldLvl = shouldUpgradeLevel(ns, i);
                 const shouldRam = shouldUpgradeRam(ns, i);
                 const shouldCore = shouldUpgradeCores(ns, i);
@@ -106,7 +123,7 @@ export function hashCapacityProduction(ns: NS, numNodes: number): [number, numbe
 }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["autoSpend", false], ["sellOnly", false], ["upgradeCache", false], ["keepFraction", 0.5], ["noLimit", false]]);
+    data.flags(ArgsSchema);
     return [];
 }
 

@@ -11,10 +11,12 @@ const cyclesForInfiltrate = M * 1000 / 200;
 export async function main(ns: NS) {
     const nSleeves = ns.sleeve.getNumSleeves();
     await initiateBlade(ns, nSleeves);
-    await runBlade(ns, nSleeves);
+    for (; ;) {
+        await runBlade(ns, nSleeves);
+    }
 }
 
-async function initiateBlade(ns: NS, count: number, crime = "Mug") {
+async function initiateBlade(ns: NS, count: number) {
     for (let i = 0; i < count; i++) {
         const task = ns.sleeve.getTask(i);
         if (task === null) {
@@ -23,7 +25,6 @@ async function initiateBlade(ns: NS, count: number, crime = "Mug") {
             switch (task.type) {
                 case 'INFILTRATE':
                 case 'BLADEBURNER':
-                    break;
                 case 'FACTION':
                 case 'COMPANY':
                 case 'CLASS':
@@ -107,7 +108,6 @@ async function runBlade(ns: NS, count: number) {
                         }
                         if (!ns.sleeve.setToBladeburnerAction(i, "Infiltrate Synthoids")) {
                             ns.tprint(`ERROR: Unable to set sleeve ${i} to 'Infiltrate Synthoids'`);
-                            ns.exit();
                         }
                         infiltratingIndex = i;
                         task = ns.sleeve.getTask(i);

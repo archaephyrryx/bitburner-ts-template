@@ -1,5 +1,4 @@
 import { AutocompleteData, CodingContract, NS } from '@ns';
-import { mimic } from '/util/stringtools';
 import { gridpathsSolver } from 'coding_contracts/gridpaths';
 import { ipAddrSolver } from 'coding_contracts/ipaddr';
 import { Solver } from 'coding_contracts/common';
@@ -10,6 +9,7 @@ import { subarraySumSolver } from 'coding_contracts/subarraysum';
 import { pathsumSolver } from 'coding_contracts/pathsum';
 import { sumwaysSolver } from 'coding_contracts/sumways';
 import { caesarSolver } from 'coding_contracts/encryption';
+import { imergeSolver } from 'coding_contracts/imerge';
 
 export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);
@@ -50,6 +50,8 @@ export function solve_contract(ns: NS, cc: CodingContract, filename: string, hos
             return attemptSolution(lpfSolver, ns, cc, filename, hostMachine, force);
         case "Generate IP Addresses":
             return attemptSolution(ipAddrSolver, ns, cc, filename, hostMachine, force);
+        case "Merge Overlapping Intervals":
+            return attemptSolution(imergeSolver, ns, cc, filename, hostMachine, force);
         case "Minimum Path Sum in a Triangle":
             return attemptSolution(pathsumSolver, ns, cc, filename, hostMachine, force);
         case "Subarray with Maximum Sum":
@@ -93,12 +95,12 @@ export async function main(ns: NS): Promise<void> {
     } else {
         const cc = ns.codingcontract;
         const types = cc.getContractTypes();
-        const header = `=== Coding Contract Types ===`;
-        ns.tprint(header);
-        for (const type of types) {
-            ns.tprint(`\t${type}`);
-        }
-        ns.tprint(mimic(header, "="));
+        // const header = `=== Coding Contract Types ===`;
+        // ns.tprint(header);
+        // for (const type of types) {
+        //     ns.tprint(`\t${type}`);
+        // }
+        // ns.tprint(mimic(header, "="));
 
 
         for (const hostname of hostnames) {
