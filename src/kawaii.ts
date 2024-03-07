@@ -178,12 +178,6 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
     return [];
 }
 
-const WANTED_PENALTY_HIGH_WATERMARK = 25.00;
-const WANTED_PENALTY_LOW_WATERMARK = 5.00;
-
-const ASCENSION_RATIO = 1.25;
-const HACK_CHA_RATIO = 3;
-
 function pickRandom(opts: Focus[]): Focus {
     return opts[Math.floor(Math.random() * opts.length)]
 }
@@ -224,7 +218,7 @@ async function combatGang(
                 } else {
                     assignCombatTask(ns, tasks, member, info, gangInfo, "respect");
                 }
-            } else if (res === undefined || (res.agi < MIN_ASC_MULT && res.str < MIN_ASC_MULT && res.def < MIN_ASC_MULT && res.dex < MIN_ASC_MULT)) {
+            } else if (res === undefined || (res.agi < MIN_ASC_MULT || res.str < MIN_ASC_MULT || res.def < MIN_ASC_MULT || res.dex < MIN_ASC_MULT)) {
                 ns.print(`INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`);
                 ns.gang.setMemberTask(member, "Train Combat");
             } else if (
@@ -245,10 +239,11 @@ async function combatGang(
             for (const equip of ns.gang.getEquipmentNames()) {
                 const stats = ns.gang.getEquipmentStats(equip);
                 if (
-                    ((stats.agi ?? 0) > 0) ||
                     ((stats.str ?? 0) > 0) ||
                     ((stats.def ?? 0) > 0) ||
-                    ((stats.dex ?? 0) > 0)
+                    ((stats.dex ?? 0) > 0) ||
+                    ((stats.agi ?? 0) > 0) ||
+                    ((stats.cha ?? 0) > 0)
                 ) {
                     if (!info.upgrades.includes(equip)) {
                         if (
@@ -287,7 +282,6 @@ async function combatGang(
     }
 }
 
-const MIN_ASC_MULT = 1.00025;
 
 
 function assignCombatTask(ns: NS, tasks: string[], memberName: string, memberInfo: GangMemberInfo, gangInfo: GangGenInfo, focus: Focus = 'money') {
@@ -296,7 +290,7 @@ function assignCombatTask(ns: NS, tasks: string[], memberName: string, memberInf
     let bestTaskMoneyGain = -1;
 
     if (focus == 'power') {
-        if (memberInfo.agi < 50 || memberInfo.def < 50 || memberInfo.str < 50 || memberInfo.dex < 50) {
+        if (memberInfo.agi < TW_MIN_STAT || memberInfo.def < TW_MIN_STAT || memberInfo.str < TW_MIN_STAT || memberInfo.dex < TW_MIN_STAT) {
             bestTask = "Train Combat";
         } else {
             bestTask = "Territory Warfare";
@@ -325,3 +319,12 @@ function assignCombatTask(ns: NS, tasks: string[], memberName: string, memberInf
         return;
     }
 }
+
+const TW_MIN_STAT = 100;
+const MIN_ASC_MULT = 1.00025;
+
+const WANTED_PENALTY_HIGH_WATERMARK = 25.00;
+const WANTED_PENALTY_LOW_WATERMARK = 5.00;
+
+const ASCENSION_RATIO = 1.25;
+const HACK_CHA_RATIO = 3;
