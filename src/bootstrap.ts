@@ -77,22 +77,22 @@ export async function main(ns: NS): Promise<void> {
     if (ns.bladeburner.inBladeburner()) {
         runOnce(ns, "blade.js");
         runOnce(ns, "sleeve-man.blade.js");
-        runOnce(ns, "hashnet.js", "--autoUpgrade", "--upgradeCache", "--keepFraction", "0.5", "--maxServers", "8");
+        runOnce(ns, "hashnet.js", "--autoUpgrade", "--upgradeCache", "--keepFraction", "0.95", "--maxServers", "8");
     } else {
         runOnce(ns, "sleeve-man.crime.js");
         runOnce(ns, "hashnet.js", "--autoUpgrade", "--keepFraction", "0", "--maxServers", "8");
     }
     // runOnce(ns, "server.js", "init");
+    runOnce(ns, "backdoor.js", "all");
     runOnce(ns, "dispatch.js");
-    runOnce(ns, "kawaii.js", "--focus", "money");
+    runOnce(ns, "kawaii.js", "--focus", "money", "--ascend");
     runOnce(ns, "custom-stats.js");
     runOnce(ns, "budget.js");
     runOnce(ns, "bong.js");
-    runOnce(ns, "jobber.js");
-    runOnce(ns, "factoid.js", "--verbose");
-    runOnce(ns, "backdoor.js", "all");
-    runOnce(ns, "aug.helper.js");
-    runOnce(ns, "monitor.js");
+    // runOnce(ns, "jobber.js");
+    // runOnce(ns, "factoid.js", "--verbose");
+    // runOnce(ns, "aug.helper.js");
+    // runOnce(ns, "monitor.js");
 
     const orderedNodes = []
     const nodes = getGraph(ns, true);

@@ -1,13 +1,13 @@
-import { AutocompleteData, GangGenInfo, GangMemberInfo, NS } from "@ns";
+import { AutocompleteData, GangGenInfo, GangMemberAscension, GangMemberInfo, NS } from "@ns";
 import { bold, reset } from "./helper";
 
-const HackNames = ["Zer0", "M0nad", "Du0", "Trinity", "Tetra", "Quine", "Hex", "N4N0", "0ctal", "N0N4", "D3c1m4t0r", "L-V", "B4k3r"];
+const HackNames = ["Zer0", "M0nad", "Du0", "Trinity", "Tetra", "Quine", "Hex", "N4N0", "0ctal", "N0N4", "D3c1m4t0r", "L-V"];
 const CombatNames = ["No-Body", "OnePunchMan", "DoubleTap", "Trice", "QuadBarrel", "Quincy", "SixShooter", "DeviantSeptum", "Octo-Vlad", "Nine-Iron", "10ne_wolf", "Ki11er"];
 
 const CYCLES_PER_SECOND = 5;
 
 export async function main(ns: NS) {
-    const flags = ns.flags([["ascend", false], ["equip", false], ["focus", "random"], ["autoAugment", false]]);
+    const flags = ns.flags([["ascend", false], ["noEquip", false], ["focus", "random"]]);
     ns.disableLog("gang.purchaseEquipment");
     ns.disableLog("gang.setMemberTask");
     if (!ns.gang.inGang()) {
@@ -21,19 +21,19 @@ export async function main(ns: NS) {
         await hackingGang(
             ns,
             flags.ascend as boolean,
-            flags.equip as boolean,
+            flags.noEquip as boolean,
             flags.autoAugment as boolean,
             flags.focus as Focus
         );
     } else {
-        await combatGang(ns, flags.ascend as boolean, flags.equip as boolean, flags.autoAugment as boolean, flags.focus as Focus);
+        await combatGang(ns, flags.ascend as boolean, flags.noEquip as boolean, flags.autoAugment as boolean, flags.focus as Focus);
     }
 }
 
 async function hackingGang(
     ns: NS,
     autoAscend: boolean,
-    autoEquip: boolean,
+    noEquip: boolean,
     autoAugment: boolean,
     focus: Focus
 ) {
@@ -52,7 +52,7 @@ async function hackingGang(
             const info = ns.gang.getMemberInformation(member);
             const res = ns.gang.getAscensionResult(member);
             if (res !== undefined && (res.hack >= ASCENSION_RATIO)) {
-                if (autoAscend && (info.upgrades.length === 0 || autoEquip) && (gangInfo.respect - info.earnedRespect >= 3 * gangInfo.wantedLevel)) {
+                if (autoAscend && (info.upgrades.length === 0 || !noEquip) && (gangInfo.respect - info.earnedRespect >= 3 * gangInfo.wantedLevel)) {
                     ns.gang.ascendMember(member);
                     ns.toast(`Ascended ${member}, now setting to task "Train Hacking"`, "success", 3500);
                     ns.gang.setMemberTask(member, "Train Hacking");
@@ -98,7 +98,7 @@ async function hackingGang(
                 ) {
                     if (!info.upgrades.includes(equip)) {
                         if (
-                            autoEquip ||
+                            !noEquip ||
                             (ns.gang.getEquipmentType(equip) === "Augmentation" &&
                                 autoAugment)
                         ) {
@@ -174,7 +174,7 @@ function assignHackingTask(ns: NS, tasks: string[], memberName: string, memberIn
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["ascend", false], ["equip", false], ["focus", "random"]]);
+    data.flags([["ascend", false], ["noEquip", false], ["focus", "random"]]);
     return [];
 }
 
@@ -185,7 +185,7 @@ function pickRandom(opts: Focus[]): Focus {
 async function combatGang(
     ns: NS,
     autoAscend: boolean,
-    autoEquip: boolean,
+    noEquip: boolean,
     autoAugment: boolean,
     focus: Focus
 ) {
@@ -203,8 +203,8 @@ async function combatGang(
         for (const member of members) {
             const info = ns.gang.getMemberInformation(member);
             const res = ns.gang.getAscensionResult(member);
-            if (res !== undefined && (res.agi * res.def * res.dex * res.str >= Math.pow(ASCENSION_RATIO, 4))) {
-                if (autoAscend && (info.upgrades.length === 0 || autoEquip) && (gangInfo.respect - info.earnedRespect >= 3 * gangInfo.wantedLevel)) {
+            if (res !== undefined && shouldAscendCombat(res)) {
+                if (autoAscend && (info.upgrades.length === 0 || !noEquip) && (gangInfo.respect - info.earnedRespect >= 3 * gangInfo.wantedLevel)) {
                     ns.gang.ascendMember(member);
                     ns.toast(`Ascended ${member}, now setting to task "Train Combat"`, "success", 3500);
                     ns.gang.setMemberTask(member, "Train Combat");
@@ -220,14 +220,18 @@ async function combatGang(
                 }
             } else if (res === undefined || (res.agi < MIN_ASC_MULT || res.str < MIN_ASC_MULT || res.def < MIN_ASC_MULT || res.dex < MIN_ASC_MULT)) {
                 ns.print(`INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`);
-                ns.gang.setMemberTask(member, "Train Combat");
+                if (info.cha_exp * STR_CHA_RATIO < info.str_exp) {
+                    ns.gang.setMemberTask(member, "Train Charisma");
+                } else {
+                    ns.gang.setMemberTask(member, "Train Combat");
+                }
             } else if (
                 absPenaltyPercent < WANTED_PENALTY_HIGH_WATERMARK ||
                 gangInfo.wantedLevel == 1
             ) {
 
                 const myFocus: Focus =
-                    (gangInfo.respectForNextRecruit < Number.MAX_SAFE_INTEGER || info.earnedRespect <= (gangInfo.respect / (members.length + 1))) ? "respect" :
+                    (gangInfo.respectForNextRecruit < Number.MAX_SAFE_INTEGER || info.earnedRespect <= gangInfo.wantedLevel) ? "respect" :
                         focus === "random" ? ((gangInfo.territory < 0.99) ? pickRandom(["respect", "money", "power"]) : pickRandom(["respect", "money"]))
                             : focus;
                 assignCombatTask(ns, tasks, member, info, gangInfo, myFocus);
@@ -239,6 +243,7 @@ async function combatGang(
             for (const equip of ns.gang.getEquipmentNames()) {
                 const stats = ns.gang.getEquipmentStats(equip);
                 if (
+                    ((stats.hack ?? 0) > 0) ||
                     ((stats.str ?? 0) > 0) ||
                     ((stats.def ?? 0) > 0) ||
                     ((stats.dex ?? 0) > 0) ||
@@ -247,7 +252,7 @@ async function combatGang(
                 ) {
                     if (!info.upgrades.includes(equip)) {
                         if (
-                            autoEquip ||
+                            !noEquip ||
                             (ns.gang.getEquipmentType(equip) === "Augmentation" &&
                                 autoAugment)
                         ) {
@@ -326,5 +331,14 @@ const MIN_ASC_MULT = 1.00025;
 const WANTED_PENALTY_HIGH_WATERMARK = 25.00;
 const WANTED_PENALTY_LOW_WATERMARK = 5.00;
 
-const ASCENSION_RATIO = 1.25;
+const ASCENSION_RATIO = 1.5;
 const HACK_CHA_RATIO = 3;
+const STR_CHA_RATIO = 10;
+
+function shouldAscendCombat(res: GangMemberAscension) {
+    return (res.str >= ASCENSION_RATIO || res.dex >= ASCENSION_RATIO || res.def >= ASCENSION_RATIO || res.agi >= ASCENSION_RATIO)
+        && res.str >= MIN_ASC_MULT
+        && res.dex >= MIN_ASC_MULT
+        && res.def >= MIN_ASC_MULT
+        && res.agi >= MIN_ASC_MULT;
+}

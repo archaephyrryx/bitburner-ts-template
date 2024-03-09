@@ -5,9 +5,9 @@ import { Cities } from './global';
 export async function main(ns: NS) {
     await everyNSeconds(ns, [
         ["blade.travel.js", []],
-        ["blade.skill.js", []],
-        ...(ns.isRunning("sleeve-man.blade.js", "home") ? ([] as [string, string[]][]) : [["sleeve-man.faction.js", []],
-        ["sleeve-man.company.js", []]] as [string, string[]][])
+        // ["blade.skill.js", []],
+        ["sleeve-man.faction.js", []],
+        ["sleeve-man.company.js", []]
     ], M);
 }
 

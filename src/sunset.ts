@@ -20,6 +20,9 @@ export async function main(ns: NS) {
     // begin sunsetting
     ns.scriptKill("market.js", "home");
     ns.exec("market.js", "home", {}, "autosell", "--force");
+    ns.scriptKill("hashnet.js", "home");
+    ns.exec("hashnet.js", "home", {}, "--sellOnly");
+
     await ns.sleep(5000);
     while (ns.singularity.upgradeHomeCores()) {
         await ns.sleep(100);

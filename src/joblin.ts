@@ -45,6 +45,7 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
             return true;
         }
     } else if (who === "self") {
+        if (ns.bladeburner.inBladeburner() && ns.bladeburner.getCurrentAction().type !== "Idle") return false;
         const task = getWork(ns);
         if (task !== null) {
             switch (task.type) {

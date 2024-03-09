@@ -8,8 +8,8 @@ type Target = { server: string, stock: boolean };
 
 const MaxNonStockTargets = 5;
 
-const homeReserve = 96;
-const batchSize = 100_000;
+const homeReserve = 128;
+const batchSize = 1_000;
 
 const defaultHGW = { hack: 1, grow: 8, weaken: 2 };
 // const defaultHGW = { hack: 0, grow: 1, weaken: 0 };
@@ -139,7 +139,7 @@ export class ThreadPool {
                 }
                 const maxRam = ns.getServerMaxRam(server.name);
                 const usedRam = ns.getServerUsedRam(server.name);
-                const freeRam = Math.max(((server.name === "home") ? maxRam - homeReserve : maxRam) - usedRam, 0);
+                const freeRam = Math.max(((server.name === "home") ? maxRam - usedRam - homeReserve : maxRam - usedRam), 0);
                 const nThreads = Math.floor(freeRam / this.threadRam);
                 this.addNewServer(server.name, nThreads);
             } else {

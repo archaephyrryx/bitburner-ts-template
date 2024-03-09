@@ -1,18 +1,18 @@
 import { AutocompleteData, NS } from "@ns";
 import { SleeveTask } from "./global";
 import { M, bold, formatTime, reset } from "./helper";
+import { CHAOS_LIMIT } from "./blade";
 
 const SYNCHRO_THRESHOLD = 50;
-const SHOCK_THRESHOLD = 90;
 
 const cyclesForInfiltrate = M * 1000 / 200;
 
-
 export async function main(ns: NS) {
+    const flags = ns.flags([["--doContracts", false]]);
     const nSleeves = ns.sleeve.getNumSleeves();
     await initiateBlade(ns, nSleeves);
     for (; ;) {
-        await runBlade(ns, nSleeves);
+        await runBlade(ns, nSleeves, flags.doContracts as boolean);
     }
 }
 
@@ -38,7 +38,7 @@ async function initiateBlade(ns: NS, count: number) {
                     }
                     break;
                 case 'RECOVERY':
-                    if (ns.sleeve.getSleeve(i).shock <= SHOCK_THRESHOLD) {
+                    if (ns.sleeve.getSleeve(i).shock == 0) {
                         ns.sleeve.setToIdle(i);
                     }
                     break;
@@ -47,16 +47,21 @@ async function initiateBlade(ns: NS, count: number) {
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function autocomplete(data: AutocompleteData, args: string[]) {
+    data.flags([["--doContracts", false]]);
     return [];
 }
 
-async function runBlade(ns: NS, count: number) {
+async function runBlade(ns: NS, count: number, doContracts: boolean) {
     ns.disableLog('sleep');
     ns.tail();
 
     const workers: Set<number> = new Set();
     const bonusCycles: number[] = [];
+
+    let infiltratingIndex = -1;
+    let contractIndex = -1;
 
     for (let i = 0; i < count; i++) {
         bonusCycles.push(ns.sleeve.getSleeve(i).storedCycles);
@@ -69,13 +74,19 @@ async function runBlade(ns: NS, count: number) {
                     workers.add(i);
                     ns.sleeve.setToIdle(i);
                     break;
+                case 'RECOVERY':
+                    workers.add(i);
+                    break;
+                case 'BLADEBURNER':
+                    workers.add(i);
+                    ns.sleeve.setToIdle(i);
+                    break;
                 default:
                     break;
             }
         }
     }
 
-    let infiltratingIndex = -1;
     for (; ;) {
         ns.clearLog();
         const dftWait = 1000;
@@ -84,6 +95,17 @@ async function runBlade(ns: NS, count: number) {
 
         const bestCycles = Math.max(...bonusCycles.filter((_, ix) => workers.has(ix)));
         let bestIndex;
+
+        const contractTries: [string, number][] = [];
+        for (const contract of ns.bladeburner.getContractNames()) {
+            const nRemaining = ns.bladeburner.getActionCountRemaining("Contracts", contract);
+            contractTries.push([contract, nRemaining]);
+        }
+        contractTries.sort((a, b) => b[1] - a[1]);
+        let bestContract: string | undefined = undefined;
+        if (contractTries[0][1] > 0 && doContracts) {
+            bestContract = contractTries[0][0];
+        }
 
         if (infiltratingIndex == -1) {
             bestIndex = bonusCycles.findIndex((value, ix) => workers.has(ix) && value == bestCycles);
@@ -102,7 +124,11 @@ async function runBlade(ns: NS, count: number) {
                         if (ns.sleeve.getSleeve(i).storedCycles < cyclesForInfiltrate) {
                             ns.print(`INFO: Not enough stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to idle...`);
                             infiltratingIndex = -1;
-                            ns.sleeve.setToIdle(i);
+                            if (ns.sleeve.getSleeve(i).shock > 0) {
+                                ns.sleeve.setToShockRecovery(i);
+                            } else {
+                                ns.sleeve.setToIdle(i);
+                            }
                             bestIndex = bonusCycles.findIndex((value, ix) => workers.has(ix) && value == bestCycles);
                             continue sleeveloop;
                         }
@@ -118,8 +144,46 @@ async function runBlade(ns: NS, count: number) {
                     msToWait = (200 * walltimeCycles / 5 + 100);
                     ns.print(`SUCCESS: Sleeve ${i} currently infiltrating, ${formatTime(msToWait / 1000)} left...`);
                 } else {
-                    ns.print(`INFO: Not enough stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to idle...`);
-                    ns.sleeve.setToIdle(i);
+                    const time = ns.sleeve.getSleeve(i).storedCycles;
+                    if (time / 5 >= 5 * M) {
+                        if (ns.sleeve.getSleeve(i).shock > 0) {
+                            ns.print(`INFO: Extra stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to Shock Recovery...`);
+                            ns.sleeve.setToShockRecovery(i);
+                            if (contractIndex == i) {
+                                contractIndex = -1;
+                            }
+                        } else if ((contractIndex == -1 || contractIndex == i) && bestContract !== undefined) {
+                            const task = ns.sleeve.getTask(i);
+                            if ((task !== null && task.type == "BLADEBURNER" && task.actionType == "Contracts" && task.actionName == bestContract) || ns.sleeve.setToBladeburnerAction(i, "Take on contracts", bestContract)) {
+                                ns.print(`INFO: Extra stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to Contracts...`);
+                                contractIndex = i;
+                            } else {
+                                ns.print(`WARNING: Unable to set sleeve ${i} to Contracts!`);
+                            }
+                        } else {
+                            if (ns.bladeburner.getCityChaos(ns.bladeburner.getCity()) > CHAOS_LIMIT) {
+                                ns.print(`INFO: Extra stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to Diplomacy...`);
+                                ns.sleeve.setToBladeburnerAction(i, "Diplomacy");
+                            } else {
+                                ns.print(`INFO: Extra stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to idle...`);
+                                ns.sleeve.setToIdle(i);
+                            }
+                            if (contractIndex == i) {
+                                contractIndex = -1;
+                            }
+                        }
+                    } else {
+                        if (ns.sleeve.getSleeve(i).shock > 0) {
+                            ns.print(`INFO: Not enough stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to Shock Recovery...`);
+                            ns.sleeve.setToShockRecovery(i);
+                        } else {
+                            ns.print(`INFO: Not enough stored time (${formatTime(ns.sleeve.getSleeve(i).storedCycles / 5)}) for sleeve ${i}, setting to idle...`);
+                            ns.sleeve.setToIdle(i);
+                        }
+                        if (contractIndex == i) {
+                            contractIndex = -1;
+                        }
+                    }
                 }
             }
         }
@@ -128,6 +192,7 @@ async function runBlade(ns: NS, count: number) {
             await ns.sleep(dftWait);
         } else {
             ns.print(`${bold}Infiltration will be done in <=${formatTime(msToWait / 1000)}.${reset}`);
+            ns.print(`${bold}Sleeve ${infiltratingIndex} on Infiltration, ${contractIndex} performing Contracts (${bestContract}) ${reset}`);
             await ns.sleep(msToWait);
             ns.sleeve.setToIdle(infiltratingIndex);
         }

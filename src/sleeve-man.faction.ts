@@ -7,6 +7,7 @@ const SYNCHRO_THRESHOLD = 50;
 const SHOCK_THRESHOLD = 90;
 
 export async function main(ns: NS) {
+    if (ns.isRunning("sleeve-man.blade.js") && ns.args[0] !== "--force") ns.exit();
     const nSleeves = ns.sleeve.getNumSleeves();
     await initiateFaction(ns, nSleeves);
 }

@@ -49,8 +49,13 @@ function rankBlade(ns: NS): boolean {
 
 export async function main(ns: NS) {
     if (!ns.bladeburner.inBladeburner()) ns.exit();
-    while (rankBlade(ns)) {
+    ns.disableLog('sleep')
+    for (; ;) {
+        while (rankBlade(ns)) {
+            continue;
+        }
         await ns.sleep(100);
+        ns.clearLog();
     }
     return;
 }

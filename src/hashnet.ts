@@ -6,7 +6,7 @@ const HASH_FOR_MONEY = 4;
 
 const bbUpgrades = ["Exchange for Bladeburner Rank", "Exchange for Bladeburner SP"];
 
-const TIMEFRAME = 4 * H;
+const TIMEFRAME = 1 * H;
 
 // type UpgradeKind = "level" | "ram" | "cores" | "cache";
 // type Item = [Action, number, Yield];

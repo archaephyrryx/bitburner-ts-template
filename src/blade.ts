@@ -2,18 +2,17 @@ import { AutocompleteData, NS } from '@ns';
 import { BladeSnap, formatSuccesses, getSnapshot, successesSinceInstall } from './blade.snapshot';
 import { formatTime } from './helper';
 
-const MAX_STAMINA_TGT = 100;
+const MAX_STAMINA_TGT = 50;
 const AUTO_CONTRACT_MIN_CHANCE = 0.95;
 const AUTO_OPERATION_MIN_CHANCE = 0.975;
 const AUTO_BLACKOPS_MIN_CHANCE = 0.99;
 const ATTEMPTS_LWM = 100;
 const ATTEMPTS_HWM = 200;
 export const CHAOS_LIMIT = 10;
-const CONTRACT_OPERATION_RATIO = 0.2;
+const CONTRACT_OPERATION_RATIO = 0;
 
 
 export async function main(ns: NS) {
-    const flags = ns.flags([["contractOnly", false]])
     ns.disableLog('sleep');
     ns.disableLog('getPlayer');
     ns.disableLog('bladeburner.getCurrentAction');
@@ -21,8 +20,6 @@ export async function main(ns: NS) {
     ns.disableLog('bladeburner.getActionTime');
     ns.disableLog('bladeburner.getActionTime');
     ns.tail();
-
-    const contractOnly: boolean = flags.contractOnly as boolean;
 
     const snapshot = getSnapshot(ns);
 
@@ -46,7 +43,7 @@ export async function main(ns: NS) {
             }
         } else {
             if (!attemptBlackOp(ns)) {
-                if (contractSwitch(ns, snapshot) || contractOnly || !attemptOperation(ns)) attemptContract(ns);
+                if (contractSwitch(ns, snapshot) || !attemptOperation(ns)) attemptContract(ns);
             }
         }
         await ns.sleep(200);
@@ -124,9 +121,11 @@ function attemptOperation(ns: NS) {
     }
 
     if (infos.some(([count, ,]) => count < ATTEMPTS_LWM)) {
-        if (!ns.isRunning("sleeve-man.blade.js", "home")) {
+        if (!ns.isRunning("sleeve-man.blade.js", "home") && !ns.isRunning("sleeve-man.blade.js", "home", "--doContracts")) {
             ns.exec("sleeve-man.blade.js", "home");
         }
+    } else if (infos.every(([count, ,]) => count > ATTEMPTS_HWM)) {
+        // ns.scriptKill("sleeve-man.blade.js", "home");
     }
     infos.sort(([, levelA, nameA], [, levelB, nameB]) => operationYield(ns, nameB, levelB) - operationYield(ns, nameA, levelA));
 
@@ -154,6 +153,8 @@ function attemptContract(ns: NS) {
         if (!ns.isRunning("sleeve-man.blade.js", "home")) {
             ns.exec("sleeve-man.blade.js", "home");
         }
+    } else if (infos.every(([count, ,]) => count > ATTEMPTS_HWM)) {
+        // ns.scriptKill("sleeve-man.blade.js", "home");
     }
 
     for (const [, , name] of infos) {
@@ -190,6 +191,9 @@ function doOperation(ns: NS, name: string) {
     const [current, max] = ns.bladeburner.getStamina();
     const myAction = ns.bladeburner.getCurrentAction();
 
+    if (ns.bladeburner.getActionCountRemaining("Operations", name) < 1) {
+        return false;
+    }
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] >= AUTO_OPERATION_MIN_CHANCE) {
         if (myAction.type != "Operation" || myAction.name != name) {
@@ -203,16 +207,11 @@ function doOperation(ns: NS, name: string) {
     }
 }
 
-function contractRank(ns: NS, name: string): number {
-    return ns.bladeburner.getActionMaxLevel("Contracts", name);
-}
-
 function operationYield(ns: NS, name: string, level: number): number {
     return ns.bladeburner.getActionRepGain("Operations", name, level) / ns.bladeburner.getActionTime("Operations", name);
 }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {
-    data.flags([["contractOnly", false]]);
     return [];
 }
 

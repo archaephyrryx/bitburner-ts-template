@@ -253,7 +253,7 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
         data.flags([["force", false]]);
         return [];
     }
-    return ["autosell", "autotrad"]
+    return ["autosell", "autotrade"]
 }
 
 /**

@@ -1,4 +1,4 @@
-import { NS, MoneySources } from "@ns";
+import { NS } from "@ns";
 
 export async function main(ns: NS) {
     const sources = ns.getMoneySources();
