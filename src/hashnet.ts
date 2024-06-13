@@ -5,6 +5,7 @@ const MONEY_PER_HASH = 250_000;
 const HASH_FOR_MONEY = 4;
 
 const bbUpgrades = ["Exchange for Bladeburner Rank", "Exchange for Bladeburner SP"];
+const corpUpgrades = ["Exchange for Corporation Research", "Sell for Corporation Funds"];
 
 const TIMEFRAME = 1 * H;
 
@@ -77,6 +78,17 @@ async function crawl(ns: NS, flags: { [key: string]: ScriptArg | string[] }) {
             }
         }
 
+        if (ns.corporation.hasCorporation() && keepFraction > 0) {
+            for (const up of corpUpgrades) {
+                ns.print(`INFO: Will purchase '${up}' when sufficient hashes are stored...`);
+                while (ns.hacknet.spendHashes(up)) {
+                    ns.toast(`Spent hashes on ${up}`, "success", 1000);
+                    await ns.sleep(100);
+                }
+            }
+
+        }
+
         for (let i = 0; i < nServers; i++) {
             let atMax = false;
             if (autoUpgrade) {
@@ -84,13 +96,13 @@ async function crawl(ns: NS, flags: { [key: string]: ScriptArg | string[] }) {
                 const shouldRam = shouldUpgradeRam(ns, i);
                 const shouldCore = shouldUpgradeCores(ns, i);
                 if ((noLimit || shouldLvl) && ns.hacknet.upgradeLevel(i)) {
-                    ns.toast(`Upgraded hacknet-server-${i} level.`, "success", 1000);
+                    // ns.toast(`Upgraded hacknet-server-${i} level.`, "success", 1000);
                 } else if ((noLimit || shouldRam) && ns.hacknet.upgradeRam(i)) {
-                    ns.toast(`Upgraded hacknet-server-${i} RAM.`, "success", 1000);
+                    // ns.toast(`Upgraded hacknet-server-${i} RAM.`, "success", 1000);
                 } else if ((noLimit || shouldCore) && ns.hacknet.upgradeCore(i)) {
-                    ns.toast(`Upgraded hacknet-server-${i} cores.`, "success", 1000);
+                    // ns.toast(`Upgraded hacknet-server-${i} cores.`, "success", 1000);
                 } else if (upgradeCache && ns.hacknet.upgradeCache(i)) {
-                    ns.toast(`Upgraded hacknet-server-${i} cache.`, "success", 1000);
+                    // ns.toast(`Upgraded hacknet-server-${i} cache.`, "success", 1000);
                 } else if (!shouldLvl && !shouldRam && !shouldCore) {
                     atMax = true;
                 }

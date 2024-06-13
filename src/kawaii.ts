@@ -218,7 +218,7 @@ async function combatGang(
                 } else {
                     assignCombatTask(ns, tasks, member, info, gangInfo, "respect");
                 }
-            } else if (res === undefined || (res.agi < MIN_ASC_MULT || res.str < MIN_ASC_MULT || res.def < MIN_ASC_MULT || res.dex < MIN_ASC_MULT)) {
+            } else if (res === undefined) {
                 ns.print(`INFO: Training ${member}, as auto-ascension is either disabled, impossible, or not efficacious`);
                 if (info.cha_exp * STR_CHA_RATIO < info.str_exp) {
                     ns.gang.setMemberTask(member, "Train Charisma");
@@ -326,7 +326,7 @@ function assignCombatTask(ns: NS, tasks: string[], memberName: string, memberInf
 }
 
 const TW_MIN_STAT = 100;
-const MIN_ASC_MULT = 1.00025;
+// const MIN_ASC_MULT = 1.00025;
 
 const WANTED_PENALTY_HIGH_WATERMARK = 25.00;
 const WANTED_PENALTY_LOW_WATERMARK = 5.00;
@@ -337,8 +337,8 @@ const STR_CHA_RATIO = 10;
 
 function shouldAscendCombat(res: GangMemberAscension) {
     return (res.str >= ASCENSION_RATIO || res.dex >= ASCENSION_RATIO || res.def >= ASCENSION_RATIO || res.agi >= ASCENSION_RATIO)
-        && res.str >= MIN_ASC_MULT
-        && res.dex >= MIN_ASC_MULT
-        && res.def >= MIN_ASC_MULT
-        && res.agi >= MIN_ASC_MULT;
+    // && res.str >= MIN_ASC_MULT
+    // && res.dex >= MIN_ASC_MULT
+    // && res.def >= MIN_ASC_MULT
+    // && res.agi >= MIN_ASC_MULT
 }

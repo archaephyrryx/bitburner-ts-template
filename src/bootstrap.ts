@@ -57,7 +57,7 @@ export async function autoCrack(ns: NS, server: string, portsHint?: number): Pro
  * @param args {string[]}
  */
 export function runOnce(ns: NS, scriptName: string, ...args: string[]) {
-    if (ns.isRunning(scriptName, "home")) {
+    if (ns.isRunning(scriptName, "home", ...args)) {
         return;
     }
     ns.exec(scriptName, "home", {}, ...args)

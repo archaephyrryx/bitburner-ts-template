@@ -21,6 +21,10 @@ export async function main(ns: NS) {
     ns.disableLog('bladeburner.getActionTime');
     ns.tail();
 
+    if (!ns.isRunning("blade.skill.js", "home")) {
+        ns.exec("blade.skill.js", "home");
+    }
+
     const snapshot = getSnapshot(ns);
 
     for (; ;) {
@@ -98,6 +102,9 @@ function doContract(ns: NS, name: string): boolean {
     const [current, max] = ns.bladeburner.getStamina();
     const myAction = ns.bladeburner.getCurrentAction();
 
+    if (ns.bladeburner.getActionCountRemaining("Contracts", name) < 1) {
+        return false;
+    }
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] >= AUTO_CONTRACT_MIN_CHANCE) {
         if (myAction.type != "Contract" || myAction.name != name) {
@@ -208,7 +215,7 @@ function doOperation(ns: NS, name: string) {
 }
 
 function operationYield(ns: NS, name: string, level: number): number {
-    return ns.bladeburner.getActionRepGain("Operations", name, level) / ns.bladeburner.getActionTime("Operations", name);
+    return ns.bladeburner.getActionRepGain("Operations", name, 10)// / ns.bladeburner.getActionTime("Operations", name);
 }
 
 export function autocomplete(data: AutocompleteData, args: string[]) {

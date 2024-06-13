@@ -1,7 +1,7 @@
 import { CrimeType, NS } from '@ns';
 import { CityName, SleeveTask } from './global';
 
-export const fallbackCrime = "Mug" as const;
+export const fallbackCrime = "Homicide" as const;
 
 // export const fallbackAction: SleeveTask = { type: "CLASS", location: "Rothman University", classType: "Computer Science" };
 // export const fallbackAction: SleeveTask = { type: "CLASS", location: "Rothman University", classType: "Algorithms" };

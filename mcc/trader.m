@@ -75,9 +75,9 @@ preshrink([X, Y, Z | Xt], Ys) :-
   ).
 
 main(!IO) :-
-    Trades = no_limit,
-    Ps = [125,2,183,62,22,47,41,22,182,41,139,162,31,126,22,77,134,69,38,180,136,54,156,75],
+    Trades = limit(10),
+    Ps = [175,125,197,97,144,167,77,82,198,8,28,71,92,19,184,157,98,60,128,33,163,129,37,167,19,76,24,161,125,194],
     preshrink(Ps, Ps1),
     State = start(Trades),
     Result = calculate(run_state(State, Ps1)),
-    io.format("%d", [i(Result)], !IO).
+    io.format("%d\n", [i(Result)], !IO).

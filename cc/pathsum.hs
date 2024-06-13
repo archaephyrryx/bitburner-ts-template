@@ -11,5 +11,5 @@ pathSum ix rows = case rows of
 
 main :: IO ()
 main =
-  let rows = [[9], [5,4], [3,7,7], [6,4,8,6]]
+  let rows = [ [7], [9,6], [6,1,9], [4,1,7,8], [6,5,2,2,7] ]
    in print $ pathSum 0 rows

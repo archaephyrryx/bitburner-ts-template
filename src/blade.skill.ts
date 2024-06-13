@@ -37,7 +37,7 @@ function rankBlade(ns: NS): boolean {
         if (!ns.bladeburner.upgradeSkill(skill, 1)) {
             return false;
         }
-        ns.toast(`Purchased ${skill} level ${ns.bladeburner.getSkillLevel(skill)}`, 'success', 2000);
+        // ns.toast(`Purchased ${skill} level ${ns.bladeburner.getSkillLevel(skill)}`, 'success', 2000);
         return true;
     }
     else {
