@@ -22,3 +22,6 @@ mcc/Mercury/**/*
 mcc/trader
 mcc/graphcolor
 .vscode/settings.json
+cc/rle
+cc/subarraysum
+mcc/graphcolor
