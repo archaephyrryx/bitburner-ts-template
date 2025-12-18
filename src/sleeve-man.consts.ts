@@ -1,5 +1,5 @@
-import { CrimeType, NS } from '@ns';
-import { CityName, SleeveTask } from './global';
+import { CrimeType, NS, SleeveTask } from '@ns';
+import { CityName } from './global';
 
 export const fallbackCrime = "Homicide" as const;
 

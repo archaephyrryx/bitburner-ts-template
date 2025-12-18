@@ -7,7 +7,6 @@ import { mimic } from "./util/stringtools";
 import { GraftableAugs } from "./aug.helper";
 import { M, formatTime } from "./helper";
 import { travelTo } from "./faction";
-import { getWork } from "./global";
 import { Cities, CityName } from "./global";
 
 const NeuroGov = "NeuroFlux Governor" as const;
@@ -359,7 +358,7 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
 }
 
 async function graftAugment(ns: NS, aug: string) {
-    ns.tail();
+    ns.ui.openTail();
     ns.disableLog('ALL');
 
     try {
@@ -395,7 +394,7 @@ async function graftAugment(ns: NS, aug: string) {
         ns.clearLog();
         const currentTime = Date.now();
         for (; ;) {
-            const work = getWork(ns);
+            const work = ns.singularity.getCurrentWork();
             if (work === null || work.type !== 'GRAFTING') {
                 if (ns.singularity.getOwnedAugmentations().includes(aug)) {
                     ns.tprint(`SUCCESS: Grafted ${aug}`);

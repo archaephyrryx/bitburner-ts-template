@@ -38,7 +38,7 @@ export async function main(ns: NS) {
     if (flags.help) {
         return helpText(ns);
     }
-    ns.tail();
+    ns.ui.openTail();
     ns.disableLog('ALL');
     // eslint-disable-next-line no-constant-condition
     for (; ;) {

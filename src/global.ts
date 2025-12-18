@@ -1,50 +1,121 @@
-import { CompanyName, CrimeType, FactionWorkType, NS, SleeveBladeburnerTask, SleeveClassTask, SleeveCompanyTask, SleeveCrimeTask, SleeveFactionTask, SleeveInfiltrateTask, SleeveRecoveryTask, SleeveSupportTask, SleeveSynchroTask } from '@ns';
+import { CompanyName, Task, NS, SleeveBladeburnerTask, SleeveClassTask, SleeveCompanyTask, SleeveCrimeTask, SleeveFactionTask, SleeveInfiltrateTask, SleeveRecoveryTask, SleeveSupportTask, SleeveSynchroTask } from '@ns';
+import { CityName, FactionWorkType, GymLocationName, GymType, LocationName } from './global.enums';
+export * from './global.enums';
 
 export type NodeInfo = { name: string; skill: number; ports: number };
 
-export interface StudyTask {
-    type: "CLASS";
-    cyclesWorked: number;
-    classType: string;
-    location: string;
-}
-export interface CompanyWorkTask {
-    type: "COMPANY";
-    cyclesWorked: number;
-    companyName: CompanyName;
+export type GymStat = GymType | `${GymType}`;
+
+export interface TaskInfo {
+    task: Task | null;
+    isIdle: boolean;
+    isFocused: boolean;
+    isGrafting: boolean;
+    //  REVIEW -  there might be more simple heuristics we care about than just gym-stats
+    gymStatsIncreased: GymStat[];
+    locationLocked: boolean;
 }
 
-export interface CreateProgramWorkTask {
-    type: "CREATE_PROGRAM";
-    cyclesWorked: number;
-    programName: string;
-}
-export interface GraftingTask {
-    type: "GRAFTING";
-    cyclesWorked: number;
-    augmentation: string;
+export function getTaskInfo(ns: NS, task?: Task | null): TaskInfo {
+    if (task === undefined) task = ns.singularity.getCurrentWork();
+    if (task === null) {
+        return {
+            task: null,
+            isIdle: true,
+            isFocused: false,
+            isGrafting: false,
+            gymStatsIncreased: [],
+            locationLocked: false,
+        };
+    }
+    const isFocused = ns.singularity.isFocused();
+    const isIdle = false;
+    switch (task.type) {
+        case "GRAFTING":
+            return {
+                task: task,
+                isFocused,
+                isIdle,
+                isGrafting: true,
+                gymStatsIncreased: [],
+                locationLocked: false,
+            };
+        case "CLASS":
+            if (task.location in Object.values(GymLocationName)) {
+                const gymStatsIncreased: GymStat[] = [];
+                const gymStat = task.classType.substring(0, 3).toLowerCase();
+                if (!(gymStat in Object.values(GymType))) {
+                    ns.alert(`ERROR: unrecognized gym stat ${task.classType} in getTaskInfo`);
+                } else {
+                    gymStatsIncreased.push(gymStat as GymStat);
+                };
+                return {
+                    task: task,
+                    isIdle,
+                    isFocused,
+                    isGrafting: false,
+                    gymStatsIncreased: gymStatsIncreased,
+                    locationLocked: true,
+                };
+            } else {
+                return {
+                    task: task,
+                    isIdle,
+                    isFocused,
+                    isGrafting: false,
+                    gymStatsIncreased: [],
+                    locationLocked: true,
+                };
+            }
+        case "COMPANY":
+            return {
+                task: task,
+                isIdle,
+                isFocused,
+                isGrafting: false,
+                gymStatsIncreased: [],
+                locationLocked: false,
+            };
+        case "CRIME":
+            // WIP - some crimes increase stats
+            return {
+                task: task,
+                isIdle,
+                isFocused,
+                isGrafting: false,
+                gymStatsIncreased: [],
+                locationLocked: false,
+            };
+        case "FACTION":
+            const gymStatsIncreased: GymStat[] = [];
+            switch (task.factionWorkType) {
+                case FactionWorkType.hacking:
+                    break;
+                case FactionWorkType.security:
+                case FactionWorkType.field:
+                    gymStatsIncreased.push(...Object.values(GymType));
+                    break;
+            }
+            return {
+                task: task,
+                isIdle,
+                isFocused,
+                isGrafting: false,
+                gymStatsIncreased: gymStatsIncreased,
+                locationLocked: false,
+            };
+        case 'CREATE_PROGRAM':
+            return {
+                task: task,
+                isIdle,
+                isFocused,
+                isGrafting: false,
+                gymStatsIncreased: [],
+                locationLocked: false,
+            };
+    }
 }
 
-export interface FactionWorkTask {
-    type: "FACTION";
-    cyclesWorked: number;
-    factionWorkType: FactionWorkType;
-    factionName: string;
-}
-
-export interface CrimeTask {
-    type: "CRIME";
-    cyclesWorked: number;
-    crimeType: CrimeType;
-}
-
-export type WorkTask = StudyTask | CompanyWorkTask | CreateProgramWorkTask | CrimeTask | FactionWorkTask | GraftingTask;
-
-export function getWork(ns: NS): WorkTask | null {
-    const task = ns.singularity.getCurrentWork();
-    if (task === null) return null;
-    return task as WorkTask;
-}
 
 export type CompanyInfo = { corp: string, rep: number, favor: number, nextFavor: number, hasFaction: boolean };
 
@@ -68,19 +139,22 @@ export function getCompanyInfo(ns: NS, names: `${CompanyName}`[]): CompanyInfo[]
     return infos;
 }
 
-export const MegacorpNames: `${CompanyName}`[] = [
-    "ECorp",
-    "MegaCorp",
-    "Bachman & Associates",
-    "Blade Industries",
-    "NWO",
-    "Clarke Incorporated",
-    "OmniTek Incorporated",
-    "Four Sigma",
-    "KuaiGong International",
-    "Fulcrum Technologies",
-];
+export enum MegaCorp {
+    ECorp = CompanyName.ECorp,
+    MegaCorp = CompanyName.MegaCorp,
+    BachmanAndAssociates = CompanyName.BachmanAndAssociates,
+    BladeIndustries = CompanyName.BladeIndustries,
+    NWO = CompanyName.NWO,
+    ClarkeIncorporated = CompanyName.ClarkeIncorporated,
+    OmniTekIncorporated = CompanyName.OmniTekIncorporated,
+    FourSigma = CompanyName.FourSigma,
+    KuaiGongInternational = CompanyName.KuaiGongInternational,
+    FulcrumTechnologies = CompanyName.FulcrumTechnologies,
+}
 
+export const MegacorpNames: `${CompanyName}`[] = [...Object.values(MegaCorp)];
+
+// TODO - refactor to make it harder to get unexpected  error-throws
 export function corpFaction(corp: string): string {
     if (corp === "Fulcrum Technologies") {
         return "Fulcrum Secret Technologies";
@@ -89,92 +163,15 @@ export function corpFaction(corp: string): string {
     }
     throw new Error(`Corporation ${corp} not recognized or has no faction.`);
 }
-export enum CityName {
-    Aevum = "Aevum",
-    Chongqing = "Chongqing",
-    Sector12 = "Sector-12",
-    NewTokyo = "New Tokyo",
-    Ishima = "Ishima",
-    Volhaven = "Volhaven"
-}
+
 export const Cities: `${CityName}`[] = [...Object.values(CityName)];
 
-export type SleeveTask =
-    | SleeveBladeburnerTask
-    | SleeveClassTask
-    | SleeveCompanyTask
-    | SleeveCrimeTask
-    | SleeveFactionTask
-    | SleeveInfiltrateTask
-    | SleeveRecoveryTask
-    | SleeveSupportTask
-    | SleeveSynchroTask;
-
-export enum LocationName {
-    AevumAeroCorp = "AeroCorp",
-    AevumBachmanAndAssociates = "Bachman & Associates",
-    AevumClarkeIncorporated = "Clarke Incorporated",
-    AevumCrushFitnessGym = "Crush Fitness Gym",
-    AevumECorp = "ECorp",
-    AevumFulcrumTechnologies = "Fulcrum Technologies",
-    AevumGalacticCybersystems = "Galactic Cybersystems",
-    AevumNetLinkTechnologies = "NetLink Technologies",
-    AevumPolice = "Aevum Police Headquarters",
-    AevumRhoConstruction = "Rho Construction",
-    AevumSnapFitnessGym = "Snap Fitness Gym",
-    AevumSummitUniversity = "Summit University",
-    AevumWatchdogSecurity = "Watchdog Security",
-    AevumCasino = "Iker Molina Casino",
-
-    ChongqingKuaiGongInternational = "KuaiGong International",
-    ChongqingSolarisSpaceSystems = "Solaris Space Systems",
-    ChongqingChurchOfTheMachineGod = "Church of the Machine God",
-
-    Sector12AlphaEnterprises = "Alpha Enterprises",
-    Sector12BladeIndustries = "Blade Industries",
-    Sector12CIA = "Central Intelligence Agency",
-    Sector12CarmichaelSecurity = "Carmichael Security",
-    Sector12CityHall = "Sector-12 City Hall",
-    Sector12DeltaOne = "DeltaOne",
-    Sector12FoodNStuff = "FoodNStuff",
-    Sector12FourSigma = "Four Sigma",
-    Sector12IcarusMicrosystems = "Icarus Microsystems",
-    Sector12IronGym = "Iron Gym",
-    Sector12JoesGuns = "Joe's Guns",
-    Sector12MegaCorp = "MegaCorp",
-    Sector12NSA = "National Security Agency",
-    Sector12PowerhouseGym = "Powerhouse Gym",
-    Sector12RothmanUniversity = "Rothman University",
-    Sector12UniversalEnergy = "Universal Energy",
-
-    NewTokyoDefComm = "DefComm",
-    NewTokyoGlobalPharmaceuticals = "Global Pharmaceuticals",
-    NewTokyoNoodleBar = "Noodle Bar",
-    NewTokyoVitaLife = "VitaLife",
-    NewTokyoArcade = "Arcade",
-
-    IshimaNovaMedical = "Nova Medical",
-    IshimaOmegaSoftware = "Omega Software",
-    IshimaStormTechnologies = "Storm Technologies",
-    IshimaGlitch = "0x6C1",
-
-    VolhavenCompuTek = "CompuTek",
-    VolhavenHeliosLabs = "Helios Labs",
-    VolhavenLexoCorp = "LexoCorp",
-    VolhavenMilleniumFitnessGym = "Millenium Fitness Gym",
-    VolhavenNWO = "NWO",
-    VolhavenOmniTekIncorporated = "OmniTek Incorporated",
-    VolhavenOmniaCybersystems = "Omnia Cybersystems",
-    VolhavenSysCoreSecurities = "SysCore Securities",
-    VolhavenZBInstituteOfTechnology = "ZB Institute of Technology",
-
-    Hospital = "Hospital",
-    Slums = "The Slums",
-    TravelAgency = "Travel Agency",
-    WorldStockExchange = "World Stock Exchange",
-
-    Void = "The Void",
-} export function universityToCity(university: LocationName | `${LocationName}`): CityName | undefined {
+/**
+ * Maps a university location to its corresponding city.
+ * @param university The university location to map.
+ * @returns The city name the university is located in, or undefined if not found.
+ */
+export function universityToCity(university: LocationName | `${LocationName}`): CityName | undefined {
     switch (university) {
         case LocationName.AevumSummitUniversity:
             return CityName.Aevum;

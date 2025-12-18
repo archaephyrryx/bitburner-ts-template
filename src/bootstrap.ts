@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { getGraph } from 'census';
+import { getGraph } from './census';
 
 export enum SelfObjectives {
     GetScripts = "Get Scripts",

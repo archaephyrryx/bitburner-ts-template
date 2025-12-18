@@ -2,11 +2,6 @@ import { NS } from '@ns';
 import { CityName, Cities } from './global';
 import { CHAOS_LIMIT } from './blade';
 
-export async function main(ns: NS) {
-    if (!ns.bladeburner.inBladeburner()) ns.exit();
-    bladeburnerTravel(ns);
-}
-
 export function bladeburnerTravel(ns: NS) {
     const currentCity = ns.bladeburner.getCity();
     const citiesChaos = getCitiesChaos(ns);
@@ -30,4 +25,9 @@ function getCitiesChaos(ns: NS): [`${CityName}`, number][] {
         ret.push([city, chaos]);
     }
     return ret.toSorted(([, chaosA], [, chaosB]) => chaosA - chaosB);
+}
+
+export async function main(ns: NS) {
+    if (!ns.bladeburner.inBladeburner()) ns.exit();
+    bladeburnerTravel(ns);
 }

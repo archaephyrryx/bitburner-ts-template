@@ -25,7 +25,7 @@ function getSleeveCompanies(ns: NS): `${CompanyName}`[] {
 }
 
 export async function main(ns: NS) {
-    ns.tail();
+    ns.ui.openTail();
     ns.disableLog('singularity.applyToCompany');
     ns.disableLog('exec');
     ns.disableLog('sleep');

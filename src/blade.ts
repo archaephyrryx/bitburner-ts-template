@@ -1,6 +1,7 @@
-import { AutocompleteData, NS } from '@ns';
+import { AutocompleteData, BladeburnerActionName, BladeburnerCurAction, NS } from '@ns';
 import { BladeSnap, formatSuccesses, getSnapshot, successesSinceInstall } from './blade.snapshot';
 import { formatTime } from './helper';
+import { BladeburnerActionType, BladeburnerContractName, BladeburnerOperationName } from './global.enums';
 
 const MAX_STAMINA_TGT = 50;
 const AUTO_CONTRACT_MIN_CHANCE = 0.95;
@@ -10,7 +11,11 @@ const ATTEMPTS_LWM = 100;
 const ATTEMPTS_HWM = 200;
 export const CHAOS_LIMIT = 10;
 const CONTRACT_OPERATION_RATIO = 0;
+const BLACKOPS_TYPE_STRING = "Black Operations";
 
+function actionIs(currentAction: BladeburnerCurAction | null, targetType: ActionType, targetName: ActionName): currentAction is BladeburnerCurAction {
+    return currentAction !== null && currentAction.type === targetType && currentAction.name === targetName;
+}
 
 export async function main(ns: NS) {
     ns.disableLog('sleep');
@@ -19,7 +24,7 @@ export async function main(ns: NS) {
     ns.disableLog('bladeburner.getStamina');
     ns.disableLog('bladeburner.getActionTime');
     ns.disableLog('bladeburner.getActionTime');
-    ns.tail();
+    ns.ui.openTail();
 
     if (!ns.isRunning("blade.skill.js", "home")) {
         ns.exec("blade.skill.js", "home");
@@ -33,14 +38,20 @@ export async function main(ns: NS) {
         ns.print(`Stamina: ${ns.formatNumber(current)} / ${ns.formatNumber(max)}`)
 
         const myAction = ns.bladeburner.getCurrentAction();
-        ns.print(`Current: ${myAction.name} (${myAction.type})`);
-
+        if (myAction == null) {
+            ns.print(`No current action`);
+        } else {
+            ns.print(`Current: ${myAction.name} (${myAction.type})`);
+        }
 
         if (!isFullHP(ns)) {
-            if (myAction.type != "General" || myAction.name != "Hyperbolic Regeneration Chamber") ns.bladeburner.startAction("General", "Hyperbolic Regeneration Chamber");
-            else ns.print(`INFO: Will continue action 'Hyperbolic Regeneration Chamber' (General) after finishing current cycle...`);
+            if (actionIs(myAction, "General", "Hyperbolic Regeneration Chamber")) {
+                ns.print(`INFO: Will continue action 'Hyperbolic Regeneration Chamber' (General) after finishing current cycle...`);
+            } else {
+                ns.bladeburner.startAction("General", "Hyperbolic Regeneration Chamber");
+            }
         } else if (max < MAX_STAMINA_TGT) {
-            if (myAction.type == "General" && myAction.name == "Training") {
+            if (actionIs(myAction, "General", "Training")) {
                 ns.print(`INFO: Will continue action 'Training' (General) after finishing current cycle...`);
             } else {
                 ns.bladeburner.startAction("General", "Training");
@@ -68,7 +79,10 @@ function isFullHP(ns: NS) {
     return current >= max;
 }
 
-function adjustLevel(ns: NS, type: string, name: string, minChance: number) {
+type ActionType = BladeburnerActionType | `${BladeburnerActionType}`;
+type ActionName = BladeburnerActionName | `${BladeburnerActionName}`;
+
+function adjustLevel(ns: NS, type: ActionType, name: ActionName, minChance: number) {
     if (ns.bladeburner.getActionEstimatedSuccessChance(type, name)[0] < minChance) {
         if (ns.bladeburner.getActionAutolevel(type, name)) {
             if (ns.bladeburner.getActionCurrentLevel(type, name) > 1) ns.bladeburner.setActionAutolevel(type, name, false);
@@ -98,7 +112,7 @@ function adjustLevel(ns: NS, type: string, name: string, minChance: number) {
     }
 }
 
-function doContract(ns: NS, name: string): boolean {
+function doContract(ns: NS, name: ActionName): boolean {
     const [current, max] = ns.bladeburner.getStamina();
     const myAction = ns.bladeburner.getCurrentAction();
 
@@ -107,7 +121,7 @@ function doContract(ns: NS, name: string): boolean {
     }
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Contracts", name)[0] >= AUTO_CONTRACT_MIN_CHANCE) {
-        if (myAction.type != "Contract" || myAction.name != name) {
+        if (!actionIs(myAction, "Contracts", name)) {
             if (ns.bladeburner.getActionMaxLevel("Contracts", name) == ns.bladeburner.getActionCurrentLevel("Contracts", name)) ns.bladeburner.setActionAutolevel("Contracts", name, true);
             return ns.bladeburner.startAction("Contracts", name);
         }
@@ -119,7 +133,7 @@ function doContract(ns: NS, name: string): boolean {
 }
 
 function attemptOperation(ns: NS) {
-    const infos: [number, number, string][] = [];
+    const infos: [number, number, BladeburnerOperationName][] = [];
     const operations = ns.bladeburner.getOperationNames();
     for (const opName of operations) {
         if (opName == "Sting Operation" || opName == "Raid" || opName == "Stealth Retirement Operation") continue;
@@ -148,7 +162,7 @@ function attemptOperation(ns: NS) {
 function attemptContract(ns: NS) {
     const myAction = ns.bladeburner.getCurrentAction();
 
-    const infos: [number, number, string][] = [];
+    const infos: [number, number, ActionName][] = [];
     for (const contractName of ns.bladeburner.getContractNames()) {
         adjustLevel(ns, "Contracts", contractName, AUTO_CONTRACT_MIN_CHANCE);
         infos.push([...getContractInfo(ns, contractName), contractName]);
@@ -171,15 +185,15 @@ function attemptContract(ns: NS) {
     }
 
     if (ns.bladeburner.getCityChaos(ns.bladeburner.getCity()) > CHAOS_LIMIT) {
-        if (myAction.type != "General" || myAction.name != "Diplomacy") ns.bladeburner.startAction("General", "Diplomacy");
+        if (myAction == null || myAction.type != "General" || myAction.name != "Diplomacy") ns.bladeburner.startAction("General", "Diplomacy");
         else ns.print(`INFO: Will continue action 'Diplomacy' (General) after finishing current cycle...`);
     } else {
-        if (myAction.type != "General" || myAction.name != "Field Analysis") ns.bladeburner.startAction("General", "Field Analysis");
+        if (myAction == null || myAction.type != "General" || myAction.name != "Field Analysis") ns.bladeburner.startAction("General", "Field Analysis");
         else ns.print(`INFO: Will continue action 'Field Analysis' (General) after finishing current cycle...`);
     }
 }
 
-function getContractInfo(ns: NS, contractName: string): [number, number] {
+function getContractInfo(ns: NS, contractName: BladeburnerContractName): [number, number] {
     const count = ns.bladeburner.getActionCountRemaining("Contracts", contractName);
     const maxLevel = ns.bladeburner.getActionMaxLevel("Contracts", contractName);
 
@@ -188,13 +202,19 @@ function getContractInfo(ns: NS, contractName: string): [number, number] {
 
 type OperationInfo = [number, number];
 
-function getOperationInfo(ns: NS, opName: string): OperationInfo {
+function getOperationInfo(ns: NS, opName: BladeburnerOperationName): OperationInfo {
     const opAttempts = ns.bladeburner.getActionCountRemaining("Operations", opName);
     const opLevel = ns.bladeburner.getActionCurrentLevel("Operations", opName);
     return [opAttempts, opLevel];
 }
 
-function doOperation(ns: NS, name: string) {
+/**
+ * Attempts to perform a Bladeburner operation.
+ * @param {NS} ns - NetScript instance to use
+ * @param {BladeburnerOperationName} name - name of the operation to attempt
+ * @returns {boolean} true if the operation was performed, false if it was not
+ */
+function doOperation(ns: NS, name: BladeburnerOperationName): boolean {
     const [current, max] = ns.bladeburner.getStamina();
     const myAction = ns.bladeburner.getCurrentAction();
 
@@ -203,7 +223,7 @@ function doOperation(ns: NS, name: string) {
     }
 
     if (current > max / 2 && ns.bladeburner.getActionEstimatedSuccessChance("Operations", name)[0] >= AUTO_OPERATION_MIN_CHANCE) {
-        if (myAction.type != "Operation" || myAction.name != name) {
+        if (myAction == null || myAction.type != "Operation" || myAction.name != name) {
             if (ns.bladeburner.getActionMaxLevel("Operations", name) == ns.bladeburner.getActionCurrentLevel("Operations", name)) ns.bladeburner.setActionAutolevel("Operations", name, true);
             return ns.bladeburner.startAction("Operations", name);
         }
@@ -214,7 +234,7 @@ function doOperation(ns: NS, name: string) {
     }
 }
 
-function operationYield(ns: NS, name: string, level: number): number {
+function operationYield(ns: NS, name: BladeburnerOperationName, level: number): number {
     return ns.bladeburner.getActionRepGain("Operations", name, 10)// / ns.bladeburner.getActionTime("Operations", name);
 }
 
@@ -226,21 +246,21 @@ function attemptBlackOp(ns: NS): boolean {
     const nextOp = ns.bladeburner.getNextBlackOp();
     if (nextOp == null || nextOp.rank > ns.bladeburner.getRank()) return false;
 
-    const [minChance, maxChance] = ns.bladeburner.getActionEstimatedSuccessChance("BlackOps", nextOp.name);
+    const [minChance, maxChance] = ns.bladeburner.getActionEstimatedSuccessChance(BLACKOPS_TYPE_STRING, nextOp.name);
     if (minChance < AUTO_BLACKOPS_MIN_CHANCE) {
         if (minChance < maxChance) {
             const myAction = ns.bladeburner.getCurrentAction();
-            if (myAction.type != "General" || myAction.name != "Field Analysis") ns.bladeburner.startAction("General", "Field Analysis");
+            if (myAction == null || myAction.type != "General" || myAction.name != "Field Analysis") ns.bladeburner.startAction("General", "Field Analysis");
             else ns.print(`INFO: Will continue action 'Field Analysis' (General) after finishing current cycle...`);
             return true;
         }
         return false;
     } else {
         const myAction = ns.bladeburner.getCurrentAction();
-        if (myAction.type != "BlackOp") {
-            ns.bladeburner.startAction("BlackOps", nextOp.name);
+        if (myAction == null || myAction.type != "BlackOp") {
+            ns.bladeburner.startAction(BLACKOPS_TYPE_STRING, nextOp.name);
         }
-        const timeLeft = ns.bladeburner.getActionTime("BlackOps", nextOp.name) - ns.bladeburner.getActionCurrentTime();
+        const timeLeft = ns.bladeburner.getActionTime(BLACKOPS_TYPE_STRING, nextOp.name) - ns.bladeburner.getActionCurrentTime();
         ns.print(`INFO: Attempting Black Op '${nextOp.name}': ${ns.formatPercent(minChance)} ~ ${ns.formatPercent(maxChance)} success rate, ${formatTime(Math.floor(timeLeft / 1000))} left.`);
         return true;
     }

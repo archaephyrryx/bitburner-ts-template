@@ -1,5 +1,4 @@
 import { NS } from "@ns";
-import { getWork } from "./global";
 
 export const MinAugments = 5;
 
@@ -38,9 +37,9 @@ export async function main(ns: NS) {
     ns.toast("WILL SUNSET IN 1 MINUTE", "warning", 60_000);
     await ns.sleep(60_000);
     for (; ;) {
-        const work = getWork(ns);
+        const work = ns.singularity.getCurrentWork();
         if (work !== null && work.type === "GRAFTING") {
-            ns.tail();
+            ns.ui.openTail();
             ns.clearLog();
             ns.print("WARNING: Currently grafting, will not sunset until grafting is aborted or finishes...");
             await ns.sleep(1000);

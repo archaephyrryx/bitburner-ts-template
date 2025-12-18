@@ -3,7 +3,6 @@ import { canAfford } from "./money_helper";
 import { uniqSort } from './util/arraytools';
 
 const NeuroGov = "NeuroFlux Governor" as const;
-const cmds = ["list-avail", "buy-avail", "list-avail-sleeves", "buy-avail-sleeves", "helper"];
 
 type AugInfo = { augName: string, fromFaction: string, atPrice: number, prereqs: string[] };
 

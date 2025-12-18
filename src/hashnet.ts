@@ -27,7 +27,7 @@ export async function main(ns: NS) {
     const flags = ns.flags(ArgsSchema);
     ns.disableLog("getServerMoneyAvailable");
     ns.disableLog("sleep");
-    ns.tail();
+    ns.ui.openTail();
 
 
     await crawl(ns, flags);

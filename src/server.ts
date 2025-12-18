@@ -1,4 +1,12 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
+
+const cmds = [
+    "init",
+    "report",
+    "once",
+    "loop",
+    "balance",
+];
 
 const getName = (i: number) => `pserv-${i}`;
 
@@ -156,6 +164,29 @@ export async function doubleAllServerRam(ns: NS): Promise<boolean> {
     return (numUpgrades > 0);
 }
 
+function serverReport(ns: NS) {
+    ns.tprint("Server RAM Report:");
+    const servers = getServersByName(ns);
+    const extra = getNumberPurchaseableServers(ns);
+    const stats = getRamStats(ns);
+    ns.tprintf("Total servers: %d", servers.length);
+    if (extra > 0) {
+        ns.tprintf("Number of remaining servers to purchase: %d", extra);
+    }
+    let ramDex = stats.maxRam;
+    if (ramDex === 0) {
+        ns.tprint(`INFO: no servers have been purchased`);
+        return;
+    }
+    while (ramDex >= stats.minRam) {
+        if ((stats._[ramDex] !== undefined) && stats._[ramDex].length > 0) {
+            ns.tprintf("Servers with %s RAM: %d", ns.formatRam(ramDex), stats._[ramDex].length);
+        }
+        ramDex /= 2;
+    }
+    return;
+}
+
 export async function main(ns: NS): Promise<void> {
     // ns.disableLog("ALL");
     async function once() {
@@ -180,18 +211,24 @@ export async function main(ns: NS): Promise<void> {
             await balanceServerRam(ns);
             break;
         case "loop":
-            if (Number.isSafeInteger(ns.args[1])) {
-                const nTimes = Number(ns.args[1]);
-                for (let i = 0; i < nTimes; i++) {
-                    ns.clearLog();
-                    await once();
+            const flags = ns.flags([["n", 0]]);
+            if (Number.isSafeInteger(flags.n)) {
+                const nTimes = Number(flags.n);
+                if (nTimes > 0) {
+                    for (let i = 0; i < nTimes; i++) {
+                        ns.clearLog();
+                        await once();
+                    }
+                    return;
+                } else {
+                    for (; ;) {
+                        ns.clearLog();
+                        await once();
+                    }
                 }
-                return;
             } else {
-                for (; ;) {
-                    ns.clearLog();
-                    await once();
-                }
+                ns.tprint("ERROR: -n requires a non-negative integer");
+                return;
             }
         default:
             await init();
@@ -200,25 +237,13 @@ export async function main(ns: NS): Promise<void> {
     }
 }
 
-function serverReport(ns: NS) {
-    ns.tprint("Server RAM Report:");
-    const servers = getServersByName(ns);
-    const extra = getNumberPurchaseableServers(ns);
-    const stats = getRamStats(ns);
-    ns.tprintf("Total servers: %d", servers.length);
-    if (extra > 0) {
-        ns.tprintf("Number of remaining servers to purchase: %d", extra);
-    }
-    let ramDex = stats.maxRam;
-    if (ramDex === 0) {
-        ns.tprint(`INFO: no servers have been purchased`);
-        return;
-    }
-    while (ramDex >= stats.minRam) {
-        if ((stats._[ramDex] !== undefined) && stats._[ramDex].length > 0) {
-            ns.tprintf("Servers with %s RAM: %d", ns.formatRam(ramDex), stats._[ramDex].length);
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    if (args.length > 0) {
+        if (args[0] == "loop") {
+            data.flags([["n", 0]]);
         }
-        ramDex /= 2;
+        return [];
+    } else {
+        return [...cmds];
     }
-    return;
 }

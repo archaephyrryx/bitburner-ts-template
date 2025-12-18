@@ -9,7 +9,7 @@ import { red, reset } from './helper';
 export async function main(ns: NS) {
     ns.disableLog('ALL');
     ns.clearLog();
-    ns.tail();
+    ns.ui.openTail();
     const tgt = ns.args[0] as string ?? "Bladeburners";
     const reqs = ns.singularity.getFactionInviteRequirements(tgt);
     ns.print(`=== ${tgt} Invite Requirements ===`);

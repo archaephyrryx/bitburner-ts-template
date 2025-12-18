@@ -14,7 +14,7 @@ const Flags: [string, (number | boolean)][] =
 
 export async function main(ns: NS) {
     const flags = ns.flags(Flags);
-    ns.tail();
+    ns.ui.openTail();
     ns.disableLog('ALL');
 
     for (; ;) {

@@ -3,7 +3,7 @@ import { selectTarget } from './monitor'
 import { getRoute } from './findpath'
 
 export async function main(ns: NS) {
-    ns.tail();
+    ns.ui.openTail();
     const tgt = ns.args[0] as string ?? await selectTarget(ns);
     const path = getRoute(ns, tgt);
     for (const step of path) {

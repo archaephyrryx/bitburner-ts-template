@@ -234,11 +234,11 @@ export async function main(ns: NS): Promise<void> {
     globalStocks = globalStocks ?? ns.stock.getSymbols();
     switch (ns.args[0]) {
         case "autotrade":
-            ns.tail();
+            ns.ui.openTail();
             await autoTrader(ns);
             return;
         case "autosell":
-            ns.tail();
+            ns.ui.openTail();
             await autoTrader(ns, false, flags.force as boolean);
             return;
         default:

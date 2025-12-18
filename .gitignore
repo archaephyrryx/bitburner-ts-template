@@ -1,6 +1,5 @@
 node_modules/
 dist/
-NetscriptDefinitions.d.ts
 package-lock.json
 target
 **/dist-newstyle

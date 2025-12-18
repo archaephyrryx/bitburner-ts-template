@@ -13,7 +13,7 @@ function canRun(ns: NS, script: string, hostname: string) {
 }
 
 export async function main(ns: NS) {
-    ns.tail();
+    ns.ui.openTail();
     const script = ns.args[0] ?? "moneyCount.js";
     if (typeof script === "string") {
         if (!watchableScripts.includes(script)) {

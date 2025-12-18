@@ -1,3 +1,6 @@
+/**
+ * Sandbox script for testing code snippets.
+ */
 import { NS } from "@ns";
 
 export async function main(ns: NS) {

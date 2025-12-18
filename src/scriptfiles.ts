@@ -20,9 +20,13 @@ export enum ScriptFile {
 
 
 export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boolean> {
-    if (ns.bladeburner.inBladeburner() && ns.bladeburner.getCurrentAction().type !== 'Idle')
-        return false;
-    const prevWork = getWork(ns);
+    if (ns.bladeburner.inBladeburner()) {
+        const action = ns.bladeburner.getCurrentAction();
+        if (action !== null && action.type !== 'Idle') {
+            return false;
+        }
+    }
+    const prevWork = ns.singularity.getCurrentWork();
     if (prevWork !== null) {
         switch (prevWork.type) {
             case 'CLASS':
@@ -33,7 +37,7 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
                 break;
             case 'CREATE_PROGRAM':
                 if (prevWork.programName == script) {
-                    while (getWork(ns) === prevWork) {
+                    while (ns.singularity.getCurrentWork() === prevWork) {
                         await ns.sleep(1000);
                     }
                     break;
@@ -57,7 +61,7 @@ export async function createScript(ns: NS, script: `${ScriptFile}`): Promise<boo
     const startedWorking = ns.singularity.createProgram(script);
     if (startedWorking) {
         while (!haveScript(ns, script)) {
-            const work = getWork(ns);
+            const work = ns.singularity.getCurrentWork();
             if (work === null || work.type !== "CREATE_PROGRAM") {
                 return false;
             }

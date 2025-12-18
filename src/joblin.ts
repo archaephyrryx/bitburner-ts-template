@@ -1,6 +1,6 @@
 import { NS, CompanyName, AutocompleteData } from '@ns';
 import { Who } from './jobber';
-import { getWork, MegacorpNames } from './global';
+import { MegacorpNames } from './global';
 
 export async function main(ns: NS) {
     await workAt(ns, ns.args[0] as CompanyName, ns.args[1] as Who);
@@ -45,8 +45,8 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
             return true;
         }
     } else if (who === "self") {
-        if (ns.bladeburner.inBladeburner() && ns.bladeburner.getCurrentAction().type !== "Idle") return false;
-        const task = getWork(ns);
+        if (ns.bladeburner.inBladeburner() && ns.bladeburner.getCurrentAction()?.type !== "Idle") return false;
+        const task = ns.singularity.getCurrentWork();
         if (task !== null) {
             switch (task.type) {
                 case "GRAFTING":
@@ -66,7 +66,7 @@ async function workAt(ns: NS, where: CompanyName, who: Who): Promise<boolean> {
                     break;
             }
             const timeOut = 5;
-            ns.tail();
+            ns.ui.openTail();
             for (let n = timeOut; n > 0; n--) {
                 ns.toast(`Will cancel current work in ${n} seconds. Kill this process (${ns.getScriptName()} ${ns.args.join(' ')}) that opens to protect important work.`, `warning`, 1000);
                 await ns.sleep(1000);

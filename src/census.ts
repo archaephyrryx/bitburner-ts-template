@@ -12,7 +12,6 @@ export function getGraph(ns: NS, force = false): NodeInfo[] {
     return graph.nodes;
 }
 
-
 type RamInfo = { home: number, purchased: number, rooted: number };
 
 function usedRam(ns: NS): RamInfo {

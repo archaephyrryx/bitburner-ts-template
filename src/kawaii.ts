@@ -37,7 +37,7 @@ async function hackingGang(
     autoAugment: boolean,
     focus: Focus
 ) {
-    ns.tail();
+    ns.ui.openTail();
     const tasks = ns.gang.getTaskNames();
 
     for (; ;) {
@@ -189,7 +189,7 @@ async function combatGang(
     autoAugment: boolean,
     focus: Focus
 ) {
-    ns.tail();
+    ns.ui.openTail();
     const tasks = ns.gang.getTaskNames();
 
     for (; ;) {

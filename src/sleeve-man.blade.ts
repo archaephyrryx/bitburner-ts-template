@@ -1,11 +1,16 @@
-import { AutocompleteData, NS } from "@ns";
-import { SleeveTask } from "./global";
+import { AutocompleteData, BladeburnerContractName, NS, SleeveTask } from "@ns";
 import { M, bold, formatTime, reset } from "./helper";
 import { CHAOS_LIMIT } from "./blade";
 
 const SYNCHRO_THRESHOLD = 50;
 
 const cyclesForInfiltrate = M * 1000 / 200;
+
+/**
+ * Amount of stored bonus cycles we don't need to worry about depleting
+ * if we meet or exceed.
+*/
+const BONUS_OVERKILL = 1_000_000;
 
 export async function main(ns: NS) {
     const flags = ns.flags([["--doContracts", false]]);
@@ -55,7 +60,7 @@ export function autocomplete(data: AutocompleteData, args: string[]) {
 
 async function runBlade(ns: NS, count: number, doContracts: boolean) {
     ns.disableLog('sleep');
-    ns.tail();
+    ns.ui.openTail();
 
     const workers: Set<number> = new Set();
     const bonusCycles: number[] = [];
@@ -96,13 +101,13 @@ async function runBlade(ns: NS, count: number, doContracts: boolean) {
         const bestCycles = Math.max(...bonusCycles.filter((_, ix) => workers.has(ix)));
         let bestIndex;
 
-        const contractTries: [string, number][] = [];
+        const contractTries: [BladeburnerContractName, number][] = [];
         for (const contract of ns.bladeburner.getContractNames()) {
             const nRemaining = ns.bladeburner.getActionCountRemaining("Contracts", contract);
             contractTries.push([contract, nRemaining]);
         }
         contractTries.sort((a, b) => b[1] - a[1]);
-        let bestContract: string | undefined = undefined;
+        let bestContract: BladeburnerContractName | undefined = undefined;
         if (contractTries[0][1] > 0 && doContracts) {
             bestContract = contractTries[0][0];
         }

@@ -1,6 +1,6 @@
 import { AutocompleteData, NS, ScriptArg } from "@ns";
-import { getGraph } from "census";
-import { NodeInfo } from "global";
+import { getGraph } from "./census";
+import { NodeInfo } from "./global";
 import { canHack } from "./helper";
 import { rip } from "./rip";
 
@@ -482,7 +482,7 @@ export async function main(ns: NS): Promise<void> {
 
     const graph = renew(ns);
     const [initTarget, userPicked] = decideTarget(ns, flags._);
-    ns.tail();
+    ns.ui.openTail();
 
     let target = initTarget;
     for (; ;) {

@@ -1,5 +1,7 @@
-import { NS, Server } from '@ns'
+import { AutocompleteData, NS, Server } from '@ns'
 import { canHack } from '/helper';
+import { spawnTaskThreads, ThreadPool } from '/threadpool';
+import { everyNSeconds } from '/bong';
 
 export type BatchConfig = {
     skimRatio: number,
@@ -27,6 +29,13 @@ function tee(ns: NS, message: string, dest: OutputStream = 'tail') {
 }
 
 export type BatchResult = false | BatchInfo;
+
+// export type PrepInfo = {
+//     growPid: number,
+//     growFinishedBy: Date,
+//     weakenPid: number,
+//     weakenFinishedBy: Date,
+// }
 
 export type BatchInfo = {
     hackPid: number,
@@ -60,6 +69,14 @@ export function isValidTarget(ns: NS, targetServer: string): Validity {
     }
 }
 
+const ENOUGH_MONEY_RATIO = 1;
+
+export function runWeaken(ns: NS, tgtServer: string, threads: number): ThreadPool {
+    let pool = new ThreadPool(ns);
+    spawnTaskThreads(ns, pool, "weaken", threads, tgtServer, false);
+    return pool;
+}
+
 export async function prepServer(ns: NS, targetServer: string): Promise<boolean> {
     const validity = isValidTarget(ns, targetServer);
     if (!validity.valid) {
@@ -69,8 +86,6 @@ export async function prepServer(ns: NS, targetServer: string): Promise<boolean>
     const server = ns.getServer(targetServer);
     const player = ns.getPlayer();
 
-    const serverAtMin: Server = { ...server, hackDifficulty: server.minDifficulty };
-
     if (server.moneyMax === undefined) {
         tee(ns, `targetServer ${targetServer} moneyMax is undefined`);
         return false;
@@ -79,9 +94,22 @@ export async function prepServer(ns: NS, targetServer: string): Promise<boolean>
     const moneyMax = server.moneyMax;
 
     const growThreadsCurrent = ns.formulas.hacking.growThreads(server, player, moneyMax);
+
+    const secIncrease = ns.growthAnalyzeSecurity(growThreadsCurrent);
+    const weakenThreads = Math.ceil(secIncrease / ns.weakenAnalyze(1));
+
+    while (server.moneyAvailable! < ENOUGH_MONEY_RATIO * moneyMax) {
+        const threadsAvail = ns.getServerMaxRam("home") - ns.getServerUsedRam("home");
+        const growThreadCost = ns.getScriptRam("grow.js");
+
+        // await ns.exec("grow.js", server.hostname, )
+        await ns.weaken(targetServer, { threads: weakenThreads });
+    }
+
     throw new Error('unimplemented');
 }
 
+// WIP
 export async function launchBatch(ns: NS, conf: BatchConfig): Promise<BatchResult> {
     if (!ns.serverExists(conf.targetServer)) {
         tee(ns, `targetServer ${conf.targetServer} does not exist`);
@@ -95,4 +123,13 @@ export async function launchBatch(ns: NS, conf: BatchConfig): Promise<BatchResul
 
     const hackTime = ns.formulas.hacking.hackTime(server, player);
     throw new Error('unimplemented');
+}
+
+export async function main(ns: NS): Promise<void> {
+    ns.ui.openTail();
+
+
+
+
+
 }

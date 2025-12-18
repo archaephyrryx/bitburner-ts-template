@@ -1,11 +1,10 @@
-import { NS } from "@ns";
+import { AutocompleteData, NS } from "@ns";
 
 const scripts = [
     "bootstrap.js",
-    "startup-hack.js",
     "server.js",
     "rip.js",
-]
+];
 
 export async function main(ns: NS): Promise<void> {
     const hostName = ns.getHostname();
@@ -25,4 +24,8 @@ export async function main(ns: NS): Promise<void> {
         ns.tprintf("Running %s on %s with %d threads (pid: %d)", scriptName, hostName, maxThreads, pid);
     }
     return;
+}
+
+export function autocomplete(data: AutocompleteData, args: string[]) {
+    return [...scripts];
 }

@@ -3,7 +3,7 @@ import { NS, Fragment } from '@ns';
 const SyncEvery = 10;
 
 export async function main(ns: NS) {
-    ns.tail();
+    ns.ui.openTail();
     await runStanek(ns);
 }
 
@@ -13,7 +13,7 @@ async function runStanek(ns: NS) {
 
     for (; ;) {
         const fragments = ns.stanek.activeFragments();
-
+        ns.ui.openTail
         const ascCharge = fragments.toSorted((a, b) => a.numCharge - b.numCharge);
 
         for (let i = 0; i < ascCharge.length; i++) {

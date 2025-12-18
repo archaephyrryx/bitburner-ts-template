@@ -120,7 +120,7 @@ export async function main(ns: NS) {
     const flags = ns.flags([
         ["purge", false]
     ]);
-    ns.tail();
+    ns.ui.openTail();
     let snapshot: BudgetItem[] = [];
     if (flags.purge as ScriptArg as boolean === true) {
         BUDGET.clearAll();

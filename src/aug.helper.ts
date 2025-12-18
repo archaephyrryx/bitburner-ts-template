@@ -4,7 +4,7 @@ import { M } from './helper';
 export let GraftableAugs: { live: false } | { live: true, augs: string[] } = { live: false };
 
 export async function main(ns: NS) {
-    ns.tail();
+    ns.ui.openTail();
     ns.disableLog('ALL');
 
     for (; ;) {

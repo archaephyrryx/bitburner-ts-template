@@ -1,29 +1,36 @@
 import { NS } from '@ns';
+import { BladeburnerSkillName } from './global.enums';
 
+const CustomWeightTable = new Map<BladeburnerSkillName, number>([
+    [BladeburnerSkillName.BladesIntuition, 2.0],
+    [BladeburnerSkillName.Cloak, 0.8],
+    [BladeburnerSkillName.ShortCircuit, 1.0],
+    [BladeburnerSkillName.DigitalObserver, 1.6],
+    [BladeburnerSkillName.Tracer, 1.0],
+    [BladeburnerSkillName.Overclock, 2.2],
+    [BladeburnerSkillName.Reaper, 1.0],
+    [BladeburnerSkillName.EvasiveSystem, 1.0],
+    [BladeburnerSkillName.Datamancer, 1.0],
+    [BladeburnerSkillName.CybersEdge, 1.0],
+    [BladeburnerSkillName.HandsOfMidas, 0.3],
+    [BladeburnerSkillName.Hyperdrive, 2.5],
+]);
+
+/**
+ * Ranks up the most cost-effective Bladeburner skill available, based on custom rank-weights.
+ * @param ns {NS} NetScript instancee
+ * @returns {boolean} true if a skill was ranked up, false otherwise (including error)
+ */
 function rankBlade(ns: NS): boolean {
-    const skillmods = new Map([
-        ["Blade's Intuition", 2.0],
-        ["Cloak", 0.8],
-        ["Short-Circuit", 1.0],
-        ["Digital Observer", 1.6],
-        ["Tracer", 1.0],
-        ["Overclock", 2.2],
-        ["Reaper", 1.0],
-        ["Evasive System", 1.0],
-        ["Datamancer", 1.0],
-        ["Cyber's Edge", 1.0],
-        ["Hands of Midas", 0.3],
-        ["Hyperdrive", 2.5],
-    ]);
     const points = ns.bladeburner.getSkillPoints();
     const skills = ns.bladeburner.getSkillNames();
 
-    const skillRatingCosts: [string, number, number][] = [];
+    const skillRatingCosts: [BladeburnerSkillName, number, number][] = [];
 
     for (const skill of skills) {
         if (cannotUpgrade(ns, skill)) continue;
         const cost = ns.bladeburner.getSkillUpgradeCost(skill, 1);
-        const weight = skillmods.get(skill);
+        const weight = CustomWeightTable.get(skill);
         if (weight == undefined) {
             ns.tprint(`ERROR: bad skill ${skill}`);
             return false;
@@ -37,7 +44,6 @@ function rankBlade(ns: NS): boolean {
         if (!ns.bladeburner.upgradeSkill(skill, 1)) {
             return false;
         }
-        // ns.toast(`Purchased ${skill} level ${ns.bladeburner.getSkillLevel(skill)}`, 'success', 2000);
         return true;
     }
     else {
@@ -60,7 +66,7 @@ export async function main(ns: NS) {
     return;
 }
 
-function cannotUpgrade(ns: NS, skill: string) {
+function cannotUpgrade(ns: NS, skill: BladeburnerSkillName) {
     const LIMITS: Record<string, number> = { ["Overclock"]: 90 };
     const curLevel = ns.bladeburner.getSkillLevel(skill);
     return LIMITS[`${skill}`] !== undefined && curLevel >= LIMITS[`${skill}`];

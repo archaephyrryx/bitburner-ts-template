@@ -7,16 +7,20 @@
     "watch:remote": "bitburner-filesync",
     "watch:init": "node build/init.js",
     "watch:all": "concurrently npm:watch:transpile npm:watch:local npm:watch:remote",
-    "watch": "npm run watch:init && npm run watch:all"
+    "watch": "npm run watch:init && npm run watch:all",
+    "defs": "node ./updateDefs.js"
   },
   "author": "hydroflame, Hoekstraa, based on work by SlyCedix",
   "devDependencies": {
+    "@types/lodash": "^4.14.178",
+    "@types/node": "^16.4.3",
     "@types/react": "^18.2.18",
     "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^5.35.1",
     "@typescript-eslint/parser": "^5.35.1",
     "bitburner-filesync": "^1.1.5",
     "chokidar": "^3.5.3",
+    "ts-node": "^9.1.1",
     "concurrently": "^7.4.0",
     "eslint": "^8.22.0",
     "fast-glob": "^3.2.12",
