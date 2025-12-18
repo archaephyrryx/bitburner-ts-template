@@ -1,5 +1,5 @@
 import { NS } from '@ns';
-import { recordRandom } from 'awdangit';
+import { recordRandom } from './awdangit';
 
 export async function main(ns: NS) {
     recordRandom(ns);
