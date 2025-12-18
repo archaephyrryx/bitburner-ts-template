@@ -1,15 +1,15 @@
 import { AutocompleteData, CodingContract, NS } from '@ns';
-import { gridpathsSolver } from 'coding_contracts/gridpaths';
-import { ipAddrSolver } from 'coding_contracts/ipaddr';
-import { Solver } from 'coding_contracts/common';
-import { lzSolver } from 'coding_contracts/lz';
-import { arrayJumpSolver, arrayJumpSolverBinary } from 'coding_contracts/arrayjump';
-import { lpfSolver } from 'coding_contracts/lpf';
-import { subarraySumSolver } from 'coding_contracts/subarraysum';
-import { pathsumSolver } from 'coding_contracts/pathsum';
-import { sumwaysSolver } from 'coding_contracts/sumways';
-import { caesarSolver } from 'coding_contracts/encryption';
-import { imergeSolver } from 'coding_contracts/imerge';
+import { gridpathsSolver } from './gridpaths';
+import { ipAddrSolver } from './ipaddr';
+import { Solver } from './common';
+import { lzSolver } from './lz';
+import { arrayJumpSolver, arrayJumpSolverBinary } from './arrayjump';
+import { lpfSolver } from './lpf';
+import { subarraySumSolver } from './subarraysum';
+import { pathsumSolver } from './pathsum';
+import { sumwaysSolver } from './sumways';
+import { caesarSolver } from './encryption';
+import { imergeSolver } from './imerge';
 
 export function attemptSolution(solverFn: Solver, ns: NS, cc: CodingContract, filename: string, hostMachine: string, force = false): boolean {
     const triesRemaining = cc.getNumTriesRemaining(filename, hostMachine);

@@ -1,5 +1,5 @@
-import { NS, CodingContract, CodingContractData } from '@ns';
-import { Solver } from 'coding_contracts/common';
+import { NS, CodingContract } from '@ns';
+import { Solver } from './common';
 
 export const imergeSolver: Solver = (ns: NS, cc: CodingContract, file: string, host: string | undefined): boolean => {
     const data = cc.getData(file, host);
@@ -17,7 +17,7 @@ export const imergeSolver: Solver = (ns: NS, cc: CodingContract, file: string, h
 
 type IntervalMergeData = Array<[number, number]>;
 
-function sanitize(data: CodingContractData): asserts data is IntervalMergeData {
+function sanitize(data: any): asserts data is IntervalMergeData {
     if (Array.isArray(data)) {
         for (const row of data) {
             if (Array.isArray(row)) {
@@ -37,7 +37,7 @@ function sanitize(data: CodingContractData): asserts data is IntervalMergeData {
 
 type Interval = [number, number];
 
-function solve_imerge(dat: CodingContractData): number[][] {
+function solve_imerge(dat: any): number[][] {
     sanitize(dat);
 
     const answer = imerge(dat);

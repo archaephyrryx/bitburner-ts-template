@@ -1,7 +1,7 @@
 import { NS, CompanyName } from "@ns";
 import { uniqSort } from "./util/arraytools";
 import { getFactionRepProgress, FactionRepProgress } from "./factoid";
-import { getCompanyInfo, MegacorpNames } from './global';
+import { getCompanyInfo, MegacorpNames, UniversityClassType, UniversityLocationName } from './global';
 import { universityToCity } from "./global";
 import { fallbackAction, fallbackCrime, moveToCity } from './sleeve-man.consts';
 
@@ -138,7 +138,7 @@ async function initiateWork(ns: NS, count: number) {
                                 ns.tprint(`ERROR: ${fallbackAction.location} is not a known university!`);
                             } else if (!moveToCity(ns, sleeveIx, dest)) {
                                 ns.tprint(`ERROR: Unable to get sleeve ${sleeveIx} to travel to dest!`);
-                            } else if (!ns.sleeve.setToUniversityCourse(sleeveIx, fallbackAction.location, fallbackAction.classType ?? "Computer Science")) {
+                            } else if (!ns.sleeve.setToUniversityCourse(sleeveIx, fallbackAction.location as UniversityLocationName, fallbackAction.classType as UniversityClassType ?? "Computer Science")) {
                                 ns.tprint(`ERROR: Unable to set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}...`)
                             } else {
                                 ns.print(`SUCCESS: Set sleeve ${sleeveIx} to study ${fallbackAction.classType} at ${fallbackAction.location}!`)
